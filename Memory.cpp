@@ -1,7 +1,6 @@
 
-#include "Memory.hpp"
-
 #include <iostream>
+#include "Memory.hpp"
 using namespace std;
 
 Memory::Memory() {

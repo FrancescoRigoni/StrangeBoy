@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 	bootRom.open("bootrom.bin", ios::in | ios::binary);
 
 	if (!bootRom.is_open()) {
-		cout << "Unable to open file";
+		cout << "Unable to open file" << endl;
 		exit(1);
 	}
 

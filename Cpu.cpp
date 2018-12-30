@@ -2,14 +2,12 @@
 #include <iostream>
 
 #include "Cpu.hpp"
-#include "ByteUtil.hpp"
 #include "LogUtil.hpp"
 
 using namespace std;
 
 Cpu::Cpu(Memory *memory) {
     this->memory = memory;
-    regPC = 0;
 }
 
 void Cpu::push8(uint8_t val) {
@@ -32,11 +30,32 @@ uint16_t Cpu::pop16() {
 }
 
 uint8_t Cpu::imm8() {
-    return memory->read8(regPC);
+    return memory->read8(regPC++);
 }
 
 uint16_t Cpu::imm16() {
-    return memory->read16(regPC);
+    regPC += 2;
+    return memory->read16(regPC-2);
+}
+
+#define ADD_CYCLES(n) cycles += n
+
+#define OPCODE_DEC_REG_8_BIT(REG) { \
+    TRACE_CPU("DEC " << #REG); \
+    setReg##REG(reg##REG()-1); \
+    if (reg##REG() == 0) setFlag(FLAG_ZERO); \
+    if (lowNibbleOf(reg##REG()) == 0xF) setFlag(FLAG_HALF_CARRY); \
+    setFlag(FLAG_SUBTRACT); \
+    ADD_CYCLES(4); \
+    break; \
+}
+
+#define OPCODE_LD_NN_N_8_BIT(REG) { \
+    uint8_t arg = imm8(); \
+    TRACE_CPU("LD " << #REG << "," << cout8Hex(arg)); \
+    setReg##REG(arg); \
+    ADD_CYCLES(8); \
+    break; \
 }
 
 void Cpu::cycle() {
@@ -44,32 +63,35 @@ void Cpu::cycle() {
     TRACE_CPU(cout16Hex(regPC-1) << "  :  " << cout8Hex(opcode) << "  :  ");
 
     switch (opcode) {
-        case 0x05:
         // DEC B
-        TRACE_CPU("DEC B");
-        break;
-
-        case 0x15:
+        case 0x05: OPCODE_DEC_REG_8_BIT(B); 
         // DEC D
-        TRACE_CPU("DEC D");
-        break;
-
-        case 0x06:
+        case 0x15: OPCODE_DEC_REG_8_BIT(D);
+        // DEC A
+        case 0x3D: OPCODE_DEC_REG_8_BIT(A);
+        // DEC E
+        case 0x1D: OPCODE_DEC_REG_8_BIT(E);
+        // DEC C
+        case 0x0D: OPCODE_DEC_REG_8_BIT(C);
         // LD B,$n
-        TRACE_CPU("LD B," << cout8Hex(imm8()));
-        regPC += 1;
-        break;
-
-        case 0x16:
+        case 0x06: OPCODE_LD_NN_N_8_BIT(B);
         // LD D,$n
-        TRACE_CPU("LD D," << cout8Hex(imm8()));
-        regPC += 1;
-        break;
-
+        case 0x16: OPCODE_LD_NN_N_8_BIT(D);
+        // LD L, $n
+        case 0x2E: OPCODE_LD_NN_N_8_BIT(L);
+        // LD C, $n
+        case 0x0E: OPCODE_LD_NN_N_8_BIT(C);
+        // LD E, $n
+        case 0x1E: OPCODE_LD_NN_N_8_BIT(E);
+  
         case 0x18:
         // JR n
         TRACE_CPU("JR " << cout8Signed(imm8()));
-        regPC += 1;
+        break;
+
+        case 0x3E:
+        // LD A, #
+        TRACE_CPU("LD A," << cout8Hex(imm8()));
         break;
 
         case 0x22:
@@ -92,16 +114,9 @@ void Cpu::cycle() {
         TRACE_CPU("INC HL");
         break;
 
-        case 0x2E:
-        // LD L, $n
-        TRACE_CPU("LD L," << cout8Hex(imm8()));
-        regPC += 1;
-        break;
-
         case 0x31:
         // LD SP,$nnnn
         TRACE_CPU("LD SP," << cout16Hex(imm16()));
-        regPC += 2;
         break;
 
         case 0xAF:
@@ -109,21 +124,9 @@ void Cpu::cycle() {
         TRACE_CPU("XOR A");
         break;
 
-        case 0x0E:
-        // LD C, $nn
-        TRACE_CPU("LD C," << cout8Hex(imm8()));
-        regPC += 1;
-        break;
-
         case 0x4f:
         // LD C, A
         TRACE_CPU("LD C, A");
-        break;
-
-        case 0x3E:
-        // LD A, $n
-        TRACE_CPU("LD A," << cout8Hex(imm8()));
-        regPC += 1;
         break;
 
         case 0x7C:
@@ -134,7 +137,6 @@ void Cpu::cycle() {
         case 0x21:
         // LD HL, $nn
         TRACE_CPU("LD HL," << cout16Hex(imm16()));
-        regPC += 2;
         break;
 
         case 0x32:
@@ -160,7 +162,6 @@ void Cpu::cycle() {
         case 0xE0:
         // LD ($FF00+C),A
         TRACE_CPU("LD ($FF00+" << cout8Hex(imm8()) << "),A");
-        regPC += 1;
         break;
 
         case 0xE2:
@@ -171,13 +172,11 @@ void Cpu::cycle() {
         case 0xF0:
         // LD A, ($FF00+$n)
         TRACE_CPU("LD A, ($FF00+" << cout8Hex(imm8()) << ")");
-        regPC += 1;
         break;
 
         case 0xEA:
         // LD ($nn), A
         TRACE_CPU("LD (" << cout16Hex(imm16()) << "),A");
-        regPC += 2;
         break;
 
         case 0x0C:
@@ -188,19 +187,11 @@ void Cpu::cycle() {
         case 0x20:
         // JR NZ, nn
         TRACE_CPU("JR NZ," << cout8Signed(imm8()));
-        regPC += 1;
         break;
 
         case 0x11:
         // LD DE,nn
         TRACE_CPU("LD DE," << cout16Hex(imm16()));
-        regPC += 2;
-        break;
-
-        case 0x1E:
-        // LD E, $n
-        TRACE_CPU("LD E," << cout8Hex(imm8()));
-        regPC += 1;
         break;
 
         case 0x13:
@@ -226,34 +217,16 @@ void Cpu::cycle() {
         case 0xCD:
         // CALL nn
         TRACE_CPU("CALL " << cout16Hex(imm16()));
-        regPC += 2;
         break;
 
         case 0xFE:
         // CP n
         TRACE_CPU("CP " << cout8Hex(imm8()));
-        regPC += 1;
-        break;
-
-        case 0x3D:
-        // DEC A
-        TRACE_CPU("DEC A");
-        break;
-
-        case 0x1D:
-        // DEC E
-        TRACE_CPU("DEC E");
-        break;
-
-        case 0x0D:
-        // DEC C
-        TRACE_CPU("DEC C");
         break;
 
         case 0x28:
         // JR Z, $n
         TRACE_CPU("JR Z," << cout8Hex(imm8()));
-        regPC += 1;
         break;
 
         case 0x57:
