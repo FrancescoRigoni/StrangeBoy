@@ -16,7 +16,6 @@
 
 class Cpu {
 private:
-	uint16_t regPC = PC_INITIAL;
 	uint16_t regSP;
 
     uint16_t regAF;
@@ -36,6 +35,10 @@ private:
     uint8_t imm8();
     uint16_t imm16();
 
+    inline void setOrClearFlag(uint8_t flag, bool setCondition) {
+        if (setCondition) setFlag(flag);
+        else clearFlag(flag);
+    }
     inline void setFlag(uint8_t flag) { setRegF(regF() | flag); }
     inline void clearFlag(uint8_t flag) { setRegF(regF() & ~flag); }
     inline bool flag(uint8_t flag) { return regF() & flag; }
@@ -59,6 +62,8 @@ private:
     inline void setRegL(uint8_t val) { return lsbTo(&regHL, val); }
 
 public:
+    uint16_t regPC = PC_INITIAL;
+
     Cpu(Memory *memory);
 
 	void cycle();

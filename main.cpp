@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     }
 
     Cpu cpu(&memory);
-    for (int i = 0; i < 101; i++) {
+    while (cpu.regPC != 0x0024 ) {
         cpu.cycle();
     }
     cout << "End" << endl;

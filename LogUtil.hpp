@@ -12,6 +12,9 @@ using namespace std;
 
 #define TRACE_CPU_ON
 
+#define OPCODE_PFX     "    : "
+#define OPCODE_CB_PFX     " : "
+
 #ifdef TRACE_CPU_ON
     #define TRACE_CPU(expr) cout << expr;
 #else
