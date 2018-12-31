@@ -52,18 +52,19 @@ private:
     inline uint8_t regH() { return msbOf(regHL); }
     inline uint8_t regL() { return lsbOf(regHL); }
 
-    inline void setRegA(uint8_t val) { return msbTo(&regAF, val); }
-    inline void setRegF(uint8_t val) { return lsbTo(&regAF, val); }
-    inline void setRegB(uint8_t val) { return msbTo(&regBC, val); }
-    inline void setRegC(uint8_t val) { return lsbTo(&regBC, val); }
-    inline void setRegD(uint8_t val) { return msbTo(&regDE, val); }
-    inline void setRegE(uint8_t val) { return lsbTo(&regDE, val); }
-    inline void setRegH(uint8_t val) { return msbTo(&regHL, val); }
-    inline void setRegL(uint8_t val) { return lsbTo(&regHL, val); }
+    inline void setRegA(uint8_t val) { msbTo(&regAF, val); }
+    inline void setRegF(uint8_t val) { lsbTo(&regAF, val); }
+    inline void setRegB(uint8_t val) { msbTo(&regBC, val); }
+    inline void setRegC(uint8_t val) { lsbTo(&regBC, val); }
+    inline void setRegD(uint8_t val) { msbTo(&regDE, val); }
+    inline void setRegE(uint8_t val) { lsbTo(&regDE, val); }
+    inline void setRegH(uint8_t val) { msbTo(&regHL, val); }
+    inline void setRegL(uint8_t val) { lsbTo(&regHL, val); }
 
 public:
     uint16_t regPC = PC_INITIAL;
-
+    bool unimplemented = false;
+    
     Cpu(Memory *memory);
 
 	void cycle();

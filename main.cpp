@@ -1,6 +1,9 @@
 #include <iostream>
 #include <fstream>
 
+#include <chrono>
+#include <thread>
+
 #include "Memory.hpp"
 #include "Cpu.hpp"
 
@@ -32,9 +35,10 @@ int main(int argc, char **argv) {
     }
 
     Cpu cpu(&memory);
-    while (cpu.regPC != 0x0024 ) {
+    do {
         cpu.cycle();
-    }
+        //this_thread::sleep_for(chrono::milliseconds(100));
+    } while (!cpu.unimplemented/*cpu.regPC != 0x00E9*/);
     cout << "End" << endl;
 
 	delete[] bootRomContent;

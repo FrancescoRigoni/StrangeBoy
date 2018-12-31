@@ -15,7 +15,7 @@
 #define ROM_BANK_SWTC_START 		0x4000
 #define ROM_BANK_0_START 			0x0000
 
-#define HIGH_RAM_SIZE               0x007E
+#define HIGH_RAM_SIZE               0x007F
 #define IO_MAPPED_SIZE              0x004C
 #define OAM_RAM_SIZE                0x00A0
 #define INTERNAL_RAM_ECHO_SIZE      0x1E00
@@ -45,7 +45,7 @@ public:
 	~Memory();
 
 	uint16_t read16(uint16_t address);
-	uint8_t read8(uint8_t address);
+	uint8_t read8(uint16_t address);
 
 	void write16(uint16_t address, uint16_t value);
 	void write8(uint16_t address, uint8_t value);

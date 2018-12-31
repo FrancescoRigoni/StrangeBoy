@@ -41,3 +41,4 @@
 #define OBJ_PAL_1           0xFF49
 #define WY                  0xFF4A
 #define WX                  0xFF4B
+#define BOOT_ROM_ENABLE     0xFF50

@@ -11,6 +11,9 @@ using namespace std;
 #define cout16Hex(value) hex << "$" << setfill('0') << setw(4) << value
 
 #define TRACE_CPU_ON
+//#define TRACE_STACK_OP_ON
+//#define TRACE_OAM_ON
+//#define TRACE_VRAM_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
@@ -19,6 +22,24 @@ using namespace std;
     #define TRACE_CPU(expr) cout << expr;
 #else
     #define TRACE_CPU(expr) {}
+#endif
+
+#ifdef TRACE_STACK_OP_ON
+    #define TRACE_STACK_OP(expr) cout << expr;
+#else
+    #define TRACE_STACK_OP(expr) {}
+#endif
+
+#ifdef TRACE_OAM_ON
+    #define TRACE_OAM(expr) cout << expr;
+#else
+    #define TRACE_OAM(expr) {}
+#endif
+
+#ifdef TRACE_VRAM_ON
+    #define TRACE_VRAM(expr) cout << expr;
+#else
+    #define TRACE_VRAM(expr) {}
 #endif
 
 #endif

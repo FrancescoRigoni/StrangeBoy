@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "Memory.hpp"
+#include "LogUtil.hpp"
 using namespace std;
 
 Memory::Memory() {
@@ -31,12 +32,12 @@ Memory::~Memory() {
 	
 uint16_t Memory::read16(uint16_t address) {
 	DECODE_ADDR_AND_MEMORY(address);
-	return (uint16_t)decodedMemory[address] | ((uint16_t)decodedMemory[address+1] << 8);
+	return (uint16_t)decodedMemory[decodedAddress] | ((uint16_t)decodedMemory[decodedAddress+1] << 8);
 }
 
-uint8_t Memory::read8(uint8_t address) {
+uint8_t Memory::read8(uint16_t address) {
 	DECODE_ADDR_AND_MEMORY(address);
-	return decodedMemory[address];
+	return decodedMemory[decodedAddress];
 }
 
 void Memory::write16(uint16_t address, uint16_t value) {
@@ -96,6 +97,7 @@ uint8_t * Memory::decodeAddress(uint16_t * address) {
 		return highRam;
 
 	} else if (*address == INTERRUPTS_ENABLE_REG) {
+        *address = 0;
 		return &interruptEnableReg;
 
 	} else {

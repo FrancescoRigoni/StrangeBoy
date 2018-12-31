@@ -11,6 +11,8 @@ Cpu::Cpu(Memory *memory) {
 }
 
 void Cpu::push8(uint8_t val) {
+    TRACE_STACK_OP(endl)
+    TRACE_STACK_OP("Push 8 bit value SP=" << cout16Hex(regSP) << " -> " << cout8Hex(val));
     memory->write8(regSP, val);
     regSP--;
 }
@@ -22,11 +24,15 @@ void Cpu::push16(uint16_t val) {
 
 uint8_t Cpu::pop8() {
     regSP++;
+    TRACE_STACK_OP(endl)
+    TRACE_STACK_OP("Pop 8 bit value SP=" << cout16Hex(regSP) << " <- " << cout8Hex(memory->read8(regSP)));
     return memory->read8(regSP);
 }
 
 uint16_t Cpu::pop16() {
-    return littleEndianCombine(pop8(), pop8());
+    uint8_t lsb = pop8();
+    uint8_t msb = pop8();
+    return littleEndianCombine(lsb, msb);
 }
 
 uint8_t Cpu::imm8() {
@@ -100,38 +106,150 @@ uint16_t Cpu::imm16() {
 }
 #define OPCODE_INC_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_PFX << "INC " << #REG);                                          \
-    setRegC(reg##REG() + 1);                                                          \
+    setReg##REG(reg##REG() + 1);                                                      \
     OPCODE_INC_8_BIT_FLAGS(reg##REG());                                               \
     ADD_CYCLES(4);                                                                    \
     break;                                                                            \
 }
-#define OPCODE_INC_HL_8_BIT() {                                                       \
-    TRACE_CPU(OPCODE_PFX << "INC (HL)");                                              \
-    uint8_t val = memory->read8(regHL) + 1;                                           \
-    memory->write8(regHL, val);                                                       \
+#define OPCODE_INC_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_PFX << "INC (" << #REGPTR << ")");                               \
+    uint8_t val = memory->read8(reg##REGPTR) + 1;                                     \
+    memory->write8(reg##REGPTR, val);                                                 \
     OPCODE_INC_8_BIT_FLAGS(val);                                                      \
     ADD_CYCLES(12);                                                                   \
     break;                                                                            \
 }
-
-#define OPCODE_LD_HL_REG_8_BIT(REG) {                                                 \
-    TRACE_CPU(OPCODE_PFX << "LD (HL)," << #REG);                                      \
-    memory->write8(regHL, reg##REG());                                                \
+#define OPCODE_INC_REG_16_BIT(REG) {                                                  \
+    TRACE_CPU(OPCODE_PFX << "INC " << #REG);                                          \
+    reg##REG++;                                                                       \
     ADD_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
-#define OPCODE_LD_REG_HL_8_BIT(REG) {                                                 \
-    TRACE_CPU(OPCODE_PFX << "LD " << #REG << ",(HL)");                                \
-    setReg##REG(memory->read8(regHL));                                                \
+#define OPCODE_LD_REGPTR_REG_8_BIT(REGPTR, REG) {                                     \
+    TRACE_CPU(OPCODE_PFX << "LD (" << #REGPTR << ")," << #REG);                       \
+    memory->write8(reg##REGPTR, reg##REG());                                          \
+    ADD_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_LD_IMM16PTR_REG_8_BIT(REG) {                                           \
+    uint16_t arg = imm16();                                                           \
+    TRACE_CPU(OPCODE_PFX << "LD (" << cout16Hex(arg) << ")," << #REG);                \
+    memory->write8(arg, reg##REG());                                                  \
+    ADD_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_LD_REG_REGPTR_8_BIT(REGD, REGPTR) {                                    \
+    TRACE_CPU(OPCODE_PFX << "LD " << #REGD << ",(" << #REGPTR << ")");                \
+    setReg##REGD(memory->read8(reg##REGPTR));                                         \
     ADD_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
 #define OPCODE_LD_REG_REG_8_BIT(REGD, REGS) {                                         \
     TRACE_CPU(OPCODE_PFX << "LD " << #REGD << "," << #REGS);                          \
-    setReg##REGD(reg##REGS());                                                          \
+    setReg##REGD(reg##REGS());                                                        \
     ADD_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
+// TODO check the borrow and half borrow logic 
+#define OPCODE_CP_8_BIT_FLAGS(N) {                                                    \
+    setOrClearFlag(FLAG_ZERO, regA() == N);                                           \
+    setFlag(FLAG_SUBTRACT);                                                           \
+    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(regA()) < lowNibbleOf(N));            \
+    setOrClearFlag(FLAG_CARRY, regA() < N);                                           \
+}
+#define OPCODE_CP_N_8_BIT() {                                                         \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "CP " << cout8Hex(arg));                                  \
+    OPCODE_CP_8_BIT_FLAGS(arg);                                                       \
+    ADD_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_PUSH_REG_16(REG) {                                                     \
+    TRACE_CPU(OPCODE_PFX << "PUSH " << #REG);                                         \
+    push16(reg##REG);                                                                 \
+    ADD_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_POP_REG_16(REG) {                                                      \
+    TRACE_CPU(OPCODE_PFX << "POP " << #REG);                                          \
+    reg##REG = pop16();                                                               \
+    ADD_CYCLES(12);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_RL_8_BIT_FLAGS(BEFORE, AFTER) {                                        \
+    setOrClearFlag(FLAG_CARRY, isBitSet(BEFORE, 7));                                  \
+    setOrClearFlag(FLAG_ZERO, AFTER == 0);                                            \
+}
+
+#define OPCODE_RL_REG_8_BIT(REG) {                                                    \
+    TRACE_CPU(OPCODE_CB_PFX << "RL " << #REG);                                        \
+    uint8_t before = reg##REG();                                                      \
+    setReg##REG(before << 1);                                                         \
+    OPCODE_RL_8_BIT_FLAGS(before, reg##REG());                                        \
+    ADD_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_RL_REGPTR_8_BIT(REGPTR) {                                              \
+    TRACE_CPU(OPCODE_CB_PFX << "RL (" << #REGPTR << ")");                             \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before << 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_RL_8_BIT_FLAGS(before, after);                                             \
+    ADD_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_RLA() {                                                                \
+    TRACE_CPU(OPCODE_PFX << "RL A");                                                  \
+    uint8_t before = regA();                                                          \
+    setRegA(before << 1);                                                             \
+    OPCODE_RL_8_BIT_FLAGS(before, regA());                                            \
+    ADD_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
+// TODO check carry logic
+#define OPCODE_ADC_8_BIT(OP2) {                                                       \
+    uint16_t op1 = regA();                                                            \
+    uint16_t op2 = OP2;                                                               \
+    uint16_t carry = flag(FLAG_CARRY) ? 1 : 0;                                        \
+    uint16_t res = op1 + op2 + carry;                                                 \
+    setOrClearFlag(FLAG_ZERO, res == 0);                                              \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    setOrClearFlag(FLAG_HALF_CARRY,                                                   \
+        ((lowNibbleOf(op1) + lowNibbleOf(op2) + carry) & 0xF0) == 0xF0);              \
+    setOrClearFlag(FLAG_HALF_CARRY,                                                   \
+        ((op1 + op2 + carry) & 0xF00) == 0xF00);                                      \
+}
+
+#define OPCODE_ADC_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_PFX << "ADC A," << #REG);                                        \
+    OPCODE_ADC_8_BIT(reg##REG());                                                     \
+    ADD_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_ADC_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_PFX << "ADC A,(" << #REGPTR << ")");                             \
+    OPCODE_ADC_8_BIT(memory->read8(reg##REGPTR));                                     \
+    ADD_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_ADC_IMM_8_BIT() {                                                      \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "ADC A," << cout8Hex(arg));                               \
+    OPCODE_ADC_8_BIT(arg);                                                            \
+    ADD_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
@@ -164,8 +282,16 @@ void Cpu::cycle() {
         case 0x24: OPCODE_INC_REG_8_BIT(H);
         // INC L
         case 0x2C: OPCODE_INC_REG_8_BIT(L);
+        // INC DE
+        case 0x13: OPCODE_INC_REG_16_BIT(DE);
+        // INC BC
+        case 0x03: OPCODE_INC_REG_16_BIT(BC);
+        // INC HL
+        case 0x23: OPCODE_INC_REG_16_BIT(HL);
+        // INC SP
+        case 0x33: OPCODE_INC_REG_16_BIT(SP);
         // INC (HL)
-        case 0x34: OPCODE_INC_HL_8_BIT();
+        case 0x34: OPCODE_INC_REGPTR_8_BIT(HL);
         // LD A, $n
         case 0x3E: OPCODE_LD_REG_N_8_BIT(A);
         // LD B,$n
@@ -211,33 +337,43 @@ void Cpu::cycle() {
         // XOR L
         case 0xAD: OPCODE_XOR_N_8_BIT(L);
         // LD (HL), A
-        case 0x77: OPCODE_LD_HL_REG_8_BIT(A);
+        case 0x77: OPCODE_LD_REGPTR_REG_8_BIT(HL, A);
         // LD (HL), B
-        case 0x70: OPCODE_LD_HL_REG_8_BIT(B);
+        case 0x70: OPCODE_LD_REGPTR_REG_8_BIT(HL, B);
         // LD (HL), C
-        case 0x71: OPCODE_LD_HL_REG_8_BIT(C);
+        case 0x71: OPCODE_LD_REGPTR_REG_8_BIT(HL, C);
         // LD (HL), D
-        case 0x72: OPCODE_LD_HL_REG_8_BIT(D);
+        case 0x72: OPCODE_LD_REGPTR_REG_8_BIT(HL, D);
         // LD (HL), E
-        case 0x73: OPCODE_LD_HL_REG_8_BIT(E);
+        case 0x73: OPCODE_LD_REGPTR_REG_8_BIT(HL, E);
         // LD (HL), H
-        case 0x74: OPCODE_LD_HL_REG_8_BIT(H);
+        case 0x74: OPCODE_LD_REGPTR_REG_8_BIT(HL, H);
         // LD (HL), L
-        case 0x75: OPCODE_LD_HL_REG_8_BIT(L);
+        case 0x75: OPCODE_LD_REGPTR_REG_8_BIT(HL, L);
+        // LD (BC), A
+        case 0x02: OPCODE_LD_REGPTR_REG_8_BIT(BC, A);
+        // LD (DE), A
+        case 0x12: OPCODE_LD_REGPTR_REG_8_BIT(DE, A);
+        // LD (nn), A
+        case 0xEA: OPCODE_LD_IMM16PTR_REG_8_BIT(A);
         // LD A,(HL)
-        case 0x7E: OPCODE_LD_REG_HL_8_BIT(A);
+        case 0x7E: OPCODE_LD_REG_REGPTR_8_BIT(A, HL);
         // LD B,(HL)
-        case 0x46: OPCODE_LD_REG_HL_8_BIT(B);
+        case 0x46: OPCODE_LD_REG_REGPTR_8_BIT(B, HL);
         // LD C,(HL)
-        case 0x4E: OPCODE_LD_REG_HL_8_BIT(C);
+        case 0x4E: OPCODE_LD_REG_REGPTR_8_BIT(C, HL);
         // LD D,(HL)
-        case 0x56: OPCODE_LD_REG_HL_8_BIT(D);
+        case 0x56: OPCODE_LD_REG_REGPTR_8_BIT(D, HL);
         // LD E,(HL)
-        case 0x5E: OPCODE_LD_REG_HL_8_BIT(E);
+        case 0x5E: OPCODE_LD_REG_REGPTR_8_BIT(E, HL);
         // LD H,(HL)
-        case 0x66: OPCODE_LD_REG_HL_8_BIT(H);
+        case 0x66: OPCODE_LD_REG_REGPTR_8_BIT(H, HL);
         // LD L,(HL)
-        case 0x6E: OPCODE_LD_REG_HL_8_BIT(L);
+        case 0x6E: OPCODE_LD_REG_REGPTR_8_BIT(L, HL);
+        // LD A,(DE)
+        case 0x1A: OPCODE_LD_REG_REGPTR_8_BIT(A, DE);
+        // LD A,(BC)
+        case 0x0A: OPCODE_LD_REG_REGPTR_8_BIT(A, BC);
         // LD A, A
         case 0x7F: OPCODE_LD_REG_REG_8_BIT(A, A);
         // LD A, B
@@ -336,107 +472,138 @@ void Cpu::cycle() {
         case 0x6C: OPCODE_LD_REG_REG_8_BIT(L, H);
         // LD L, L
         case 0x6D: OPCODE_LD_REG_REG_8_BIT(L, L);
-
-        case 0x22:
-        // LD (HL+), A
-        TRACE_CPU("Unimplemented LD (HL+), A");
-        break;
-
-        case 0x23:
-        // INC HL
-        TRACE_CPU("Unimplemented INC HL");
-        break;
-
-        case 0xE0:
-        // LD ($FF00+C),A
-        TRACE_CPU("Unimplemented LD ($FF00+" << cout8Hex(imm8()) << "),A");
-        break;
-
-        case 0xF0:
-        // LD A, ($FF00+$n)
-        TRACE_CPU("Unimplemented LD A, ($FF00+" << cout8Hex(imm8()) << ")");
-        break;
-
-        case 0xEA:
-        // LD ($nn), A
-        TRACE_CPU("Unimplemented LD (" << cout16Hex(imm16()) << "),A");
-        break;
-
-        case 0x13:
-        // INC DE
-        TRACE_CPU("Unimplemented INC DE");
-        break;
-
-        case 0x1A:
-        // LD A, (DE)
-        TRACE_CPU("Unimplemented LD A, (DE)");
-        break;
-
-        case 0xCD:
-        // CALL nn
-        TRACE_CPU("Unimplemented CALL " << cout16Hex(imm16()));
-        break;
-
-        case 0xFE:
         // CP n
-        TRACE_CPU("Unimplemented CP " << cout8Hex(imm8()));
-        break;
+        case 0xFE: OPCODE_CP_N_8_BIT();
+        // PUSH AF
+        case 0xF5: OPCODE_PUSH_REG_16(AF);
+        // PUSH BC
+        case 0xC5: OPCODE_PUSH_REG_16(BC);
+        // PUSH DE
+        case 0xD5: OPCODE_PUSH_REG_16(DE);
+        // PUSH HL
+        case 0xE5: OPCODE_PUSH_REG_16(HL);
+        // POP AF
+        case 0xF1: OPCODE_POP_REG_16(AF);
+        // POP BC
+        case 0xC1: OPCODE_POP_REG_16(BC);
+        // POP DE
+        case 0xD1: OPCODE_POP_REG_16(DE);
+        // POP HL
+        case 0xE1: OPCODE_POP_REG_16(HL);
+        // RLA
+        case 0x17: OPCODE_RLA();
+        // ADC A,A
+        case 0x8F: OPCODE_ADC_REG_8_BIT(A);
+        // ADC A,B
+        case 0x88: OPCODE_ADC_REG_8_BIT(B);
+        // ADC A,C
+        case 0x89: OPCODE_ADC_REG_8_BIT(C);
+        // ADC A,D
+        case 0x8A: OPCODE_ADC_REG_8_BIT(D);
+        // ADC A,E
+        case 0x8B: OPCODE_ADC_REG_8_BIT(E);
+        // ADC A,H
+        case 0x8C: OPCODE_ADC_REG_8_BIT(H);
+        // ADC A,L
+        case 0x8D: OPCODE_ADC_REG_8_BIT(L);
+        // ADC A,(HL)
+        case 0x8E: OPCODE_ADC_REGPTR_8_BIT(HL);
+        // ADC A,n
+        case 0xCE: OPCODE_ADC_IMM_8_BIT();
 
         case 0x90:
         // SUB B
         TRACE_CPU("Unimplemented SUB B");
-        break;
-
-        case 0xC5:
-        // PUSH BC
-        TRACE_CPU("Unimplemented PUSH BC");
-        break;
-
-        case 0xC1:
-        // POP BC
-        TRACE_CPU("Unimplemented POP BC");
-        break;
-
-        case 0xC9:
-        // RET
-        TRACE_CPU("Unimplemented RET");
-        break;
-
-        case 0x17:
-        // RLA
-        TRACE_CPU("Unimplemented RLA");
+        unimplemented = true;
         break;
 
         // LD (HL-),A
         case 0x32:
-        TRACE_CPU(OPCODE_PFX << "LD (HL-),A");
-        memory->write8(regHL--, regA());
-        ADD_CYCLES(8);
-        break;
+            TRACE_CPU(OPCODE_PFX << "LD (HL-),A");
+            memory->write8(regHL--, regA());
+            ADD_CYCLES(8);
+            break;
 
+        // RET
+        case 0xC9: {
+            TRACE_CPU(OPCODE_PFX << "RET");
+            regPC = pop16();
+            ADD_CYCLES(8);
+            break;
+        }
+        // LD ($FF00+n),A
+        case 0xE0: {
+            uint8_t arg = imm8();
+            TRACE_CPU(OPCODE_PFX << "LD ($FF00+" << cout8Hex(arg) << "),A");
+            memory->write8(0xFF00+arg, regA());
+            ADD_CYCLES(12);
+            break;
+        }
+        // LD A,($FF00+n)
+        case 0xF0: {
+            uint8_t arg = imm8();
+            TRACE_CPU(OPCODE_PFX << "LD A, ($FF00+" << cout8Hex(arg) << ")");
+            setRegA(memory->read8(0xFF00+arg));
+            ADD_CYCLES(12);
+            break;
+        }
+        // CALL nn
+        case 0xCD: {
+            uint16_t dest = imm16();
+            TRACE_CPU(OPCODE_PFX << "CALL " << cout16Hex(dest));
+            push16(regPC);
+            regPC = dest;
+            ADD_CYCLES(12);
+            break;
+        }
         // LD ($FF00+C),A
-        case 0xE2:
-        TRACE_CPU(OPCODE_PFX << "LD ($FF00+C),A");
-        memory->write8(0xFF00+regC(), regA());
-        ADD_CYCLES(8);
-        break;
-
+        case 0xE2: {
+            TRACE_CPU(OPCODE_PFX << "LD ($FF00+C),A");
+            memory->write8(0xFF00+regC(), regA());
+            ADD_CYCLES(8);
+            break;
+        }
+        // LD (HL+), A
+        case 0x22: {
+            TRACE_CPU(OPCODE_PFX << "LD (HL+), A");
+            memory->write8(regHL++, regA());
+            ADD_CYCLES(8);
+            break;
+        }
+        // CB Prefix
         case 0xCB:
         opcode = memory->read8(regPC++);
         TRACE_CPU(cout8Hex(opcode));
         switch (opcode) {
             // BIT 7,H
             case 0x7C: OPCODE_BIT_REG_8_BIT(7, H);
-
-            case 0x11:
+            // RL A
+            case 0x17: OPCODE_RL_REG_8_BIT(A);
+            // RL B
+            case 0x10: OPCODE_RL_REG_8_BIT(B);
             // RL C
-            TRACE_CPU("Unimplemented RL C");
+            case 0x11: OPCODE_RL_REG_8_BIT(C);
+            // RL D
+            case 0x12: OPCODE_RL_REG_8_BIT(D);
+            // RL E
+            case 0x13: OPCODE_RL_REG_8_BIT(E);
+            // RL H
+            case 0x14: OPCODE_RL_REG_8_BIT(H);
+            // RL L
+            case 0x15: OPCODE_RL_REG_8_BIT(L);
+            // RL (HL)
+            case 0x16: OPCODE_RL_REGPTR_8_BIT(HL);
+
+            default:
+                unimplemented = true;
+                break;
         }
         break;
 
         default:
-        TRACE_CPU("Unimplemented!!!");
-        break;
+            TRACE_CPU("Unimplemented!!!");
+            unimplemented = true;
+            break;
     }
 
     TRACE_CPU(endl)
