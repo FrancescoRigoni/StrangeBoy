@@ -26,8 +26,10 @@ int main(int argc, char **argv) {
     do {
         //cpu.dumpStatus();
         cpu.cycle();
-        display.dumpBgTilesData();
-        if (cpu.regPC >= 0x00a3) {
+        //display.dumpBgTilesMap();
+        display.drawBackground();
+        if (cpu.regPC == 0x0068) {
+            break;
             //this_thread::sleep_for(chrono::milliseconds(1000));
         }
     } while (!cpu.unimplemented);

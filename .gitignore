@@ -5,3 +5,4 @@ GameboyEmu
 Makefile
 a.out
 *.bin
+.DS_Store
