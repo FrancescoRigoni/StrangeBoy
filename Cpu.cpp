@@ -189,29 +189,32 @@ uint16_t Cpu::imm16() {
     setOrClearFlag(FLAG_ZERO, AFTER == 0);                                            \
 }
 
+// Rotate left through carry (unlike RLC)
 #define OPCODE_RL_REG_8_BIT(REG) {                                                    \
     TRACE_CPU(OPCODE_CB_PFX << "RL " << #REG);                                        \
     uint8_t before = reg##REG();                                                      \
-    setReg##REG(before << 1);                                                         \
+    setReg##REG((before << 1) | flag(FLAG_CARRY));                                    \
     OPCODE_RL_8_BIT_FLAGS(before, reg##REG());                                        \
     ADD_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
+// Rotate left through carry (unlike RLC)
 #define OPCODE_RL_REGPTR_8_BIT(REGPTR) {                                              \
     TRACE_CPU(OPCODE_CB_PFX << "RL (" << #REGPTR << ")");                             \
     uint8_t before = memory->read8(reg##REGPTR);                                      \
-    uint8_t after = before << 1;                                                      \
+    uint8_t after = (before << 1) | flag(FLAG_CARRY);                                 \
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_RL_8_BIT_FLAGS(before, after);                                             \
     ADD_CYCLES(16);                                                                   \
     break;                                                                            \
 }
 
+// Rotate left through carry (unlike RLC)
 #define OPCODE_RLA() {                                                                \
-    TRACE_CPU(OPCODE_PFX << "RL A");                                                  \
+    TRACE_CPU(OPCODE_PFX << "RLA");                                                   \
     uint8_t before = regA();                                                          \
-    setRegA(before << 1);                                                             \
+    setRegA((before << 1) | flag(FLAG_CARRY));                                        \
     OPCODE_RL_8_BIT_FLAGS(before, regA());                                            \
     ADD_CYCLES(4);                                                                    \
     break;                                                                            \
@@ -251,6 +254,13 @@ uint16_t Cpu::imm16() {
     OPCODE_ADC_8_BIT(arg);                                                            \
     ADD_CYCLES(8);                                                                    \
     break;                                                                            \
+}
+
+void Cpu::dumpStatus() {
+    TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
+    TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
+    TRACE_CPU(" F: " << cout8Hex(regF()) << " L: " << cout8Hex(regL()) << " AF: " << cout16Hex(regAF));
+    TRACE_CPU(" BC: " << cout16Hex(regBC) << " DE: " << cout16Hex(regDE) << " HL: " << cout16Hex(regHL) << "] ");
 }
 
 void Cpu::cycle() {
@@ -566,7 +576,8 @@ void Cpu::cycle() {
         // LD (HL+), A
         case 0x22: {
             TRACE_CPU(OPCODE_PFX << "LD (HL+), A");
-            memory->write8(regHL++, regA());
+            memory->write8(regHL, regA());
+            regHL++;
             ADD_CYCLES(8);
             break;
         }

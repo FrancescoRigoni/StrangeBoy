@@ -10,10 +10,10 @@ using namespace std;
 #define cout8Hex(value) hex << "$" << setfill('0') << setw(2) << +value
 #define cout16Hex(value) hex << "$" << setfill('0') << setw(4) << value
 
-#define TRACE_CPU_ON
+//#define TRACE_CPU_ON
 //#define TRACE_STACK_OP_ON
 //#define TRACE_OAM_ON
-//#define TRACE_VRAM_ON
+#define TRACE_VRAM_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "

@@ -34,23 +34,28 @@ Memory::~Memory() {
 	uint8_t *decodedMemory = decodeAddress(&decodedAddress); \
 	
 uint16_t Memory::read16(uint16_t address) {
+    reading = true;
 	DECODE_ADDR_AND_MEMORY(address);
 	return (uint16_t)decodedMemory[decodedAddress] | ((uint16_t)decodedMemory[decodedAddress+1] << 8);
 }
 
 uint8_t Memory::read8(uint16_t address) {
+    reading = true;
 	DECODE_ADDR_AND_MEMORY(address);
 	return decodedMemory[decodedAddress];
 }
 
 void Memory::write16(uint16_t address, uint16_t value) {
+    reading = false;
 	DECODE_ADDR_AND_MEMORY(address);
 	decodedMemory[decodedAddress] = (uint8_t)(value & 0xFF);
 	decodedMemory[decodedAddress+1] = (uint8_t)((value & 0xFF00) >> 8);
 }
 
 void Memory::write8(uint16_t address, uint8_t value) {
+    reading = false;
 	DECODE_ADDR_AND_MEMORY(address);
+    //cout << endl << "Writing val " << cout8Hex(value) << endl;
 	decodedMemory[decodedAddress] = value;
 }
 
@@ -70,7 +75,7 @@ uint8_t * Memory::decodeAddress(uint16_t *address) {
 	} else if (*address >= VIDEO_RAM_START && 
 		*address < (VIDEO_RAM_START + VIDEO_RAM_SIZE)) {
 		*address -= VIDEO_RAM_START;
-        TRACE_VRAM("Access to VRAM at address " << cout16Hex(*address + VIDEO_RAM_START) << endl);
+        //if (!reading) TRACE_VRAM(endl << "Access to VRAM at address " << cout16Hex(*address + VIDEO_RAM_START) << endl);
 		return videoRam;
 
 	} else if (*address >= RAM_BANK_SWTC_START && 

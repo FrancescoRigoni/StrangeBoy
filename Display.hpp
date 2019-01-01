@@ -23,9 +23,10 @@ public:
         this->memory = memory;
     }
 
+    // Note: opposite of what the gameboy manual says
     uint16_t bgTilesDataAddress() {
         uint8_t lcdc = memory->read8(LCDC);
-        return isBitSet(lcdc, LCDC_BG_AND_WIN_TILE_DATA_SELECT) ? 0x8000 : 0x8800;
+        return !isBitSet(lcdc, LCDC_BG_AND_WIN_TILE_DATA_SELECT) ? 0x8000 : 0x8800;
     }
 
     uint16_t bgTilesMapAddress() {
@@ -34,4 +35,6 @@ public:
     }
 
     void dumpBgTilesMap();
+    void dumpBgTilesData();
+    void renderTile(uint16_t address);
 };

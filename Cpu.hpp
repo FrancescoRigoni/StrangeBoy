@@ -64,9 +64,10 @@ private:
 public:
     uint16_t regPC = PC_INITIAL;
     bool unimplemented = false;
-    
+
     Cpu(Memory *memory);
 
+    void dumpStatus();
 	void cycle();
 };
 

@@ -41,6 +41,8 @@ private:
 	uint8_t *romBank0;
     uint8_t *bootRom;
 
+    bool reading;
+
 	uint8_t *decodeAddress(uint16_t * address);
 
 public:

@@ -7,6 +7,7 @@
 #include "Memory.hpp"
 #include "Display.hpp"
 #include "Cpu.hpp"
+#include "LogUtil.hpp"
 
 using namespace std;
 
@@ -23,9 +24,12 @@ int main(int argc, char **argv) {
     Display display(&memory);
     Cpu cpu(&memory);
     do {
+        //cpu.dumpStatus();
         cpu.cycle();
-        display.dumpBgTilesMap();
-        //this_thread::sleep_for(chrono::milliseconds(100));
+        display.dumpBgTilesData();
+        if (cpu.regPC >= 0x00a3) {
+            //this_thread::sleep_for(chrono::milliseconds(1000));
+        }
     } while (!cpu.unimplemented);
     cout << "End" << endl;
 }
