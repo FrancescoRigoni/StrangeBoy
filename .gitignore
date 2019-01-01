@@ -4,4 +4,4 @@ CMakeFiles/
 GameboyEmu
 Makefile
 a.out
-bootrom.bin
+*.bin

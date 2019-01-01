@@ -1,4 +1,7 @@
 
+#ifndef __IO_H__
+#define __IO_H__
+
 #define P1 					0xFF00
 #define SERIAL_TX_DATA		0xFF01
 #define SERIAL_IO_CTRL		0xFF02
@@ -41,4 +44,23 @@
 #define OBJ_PAL_1           0xFF49
 #define WY                  0xFF4A
 #define WX                  0xFF4B
-#define BOOT_ROM_ENABLE     0xFF50
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

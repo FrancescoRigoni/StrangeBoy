@@ -5,41 +5,49 @@
 #include <thread>
 
 #include "Memory.hpp"
+#include "Display.hpp"
 #include "Cpu.hpp"
 
 using namespace std;
 
+uint8_t *readRom(const char *fileName);
+
 int main(int argc, char **argv) {
 	cout << "Hello Gameboy" << endl;
 
-	ifstream bootRom;
-	bootRom.open("bootrom.bin", ios::in | ios::binary);
+    uint8_t *bootRom = readRom("bootrom.bin");
+    uint8_t *tetris = readRom("tetris.bin");
 
-	if (!bootRom.is_open()) {
-		cout << "Unable to open file" << endl;
-		exit(1);
-	}
+    Memory memory(bootRom, tetris);
 
-    bootRom.seekg(0, ios::end);
-	int bootRomSize = bootRom.tellg();
-	char *bootRomContent = new char[bootRomSize];
-	bootRom.seekg(0, ios::beg);
-	bootRom.read(bootRomContent, bootRomSize);
-	bootRom.close();
-
-    Memory memory;
-
-    cout << "Rom size " << bootRomSize << endl;
-    for (int i = 0; i < bootRomSize; i++) {
-        memory.write8(i, (uint8_t) bootRomContent[i]);
-    }
-
+    Display display(&memory);
     Cpu cpu(&memory);
     do {
         cpu.cycle();
+        display.dumpBgTilesMap();
         //this_thread::sleep_for(chrono::milliseconds(100));
-    } while (!cpu.unimplemented/*cpu.regPC != 0x00E9*/);
+    } while (!cpu.unimplemented);
     cout << "End" << endl;
-
-	delete[] bootRomContent;
 }
+
+uint8_t *readRom(const char *fileName) {
+    ifstream rom;
+    rom.open(fileName, ios::in | ios::binary);
+
+    if (!rom.is_open()) {
+        cout << "Unable to open file" << endl;
+        exit(1);
+    }
+
+    rom.seekg(0, ios::end);
+    int romSize = rom.tellg();
+    char *romContent = new char[romSize];
+    rom.seekg(0, ios::beg);
+    rom.read(romContent, romSize);
+    rom.close();
+
+    return (uint8_t*)romContent;
+}
+
+
+

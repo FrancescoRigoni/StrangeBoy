@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #define INTERRUPTS_ENABLE_REG       0xFFFF
+#define BOOT_ROM_DISABLE_REG        0xFF50
 #define HIGH_RAM_START              0xFF80
 #define IO_START                    0xFF00
 #define OAM_RAM_START               0xFE00
@@ -28,6 +29,7 @@
 class Memory {
 private:
 	uint8_t interruptEnableReg;
+    uint8_t bootRomDisableReg = 0;
 
 	uint8_t *highRam;
 	uint8_t *ioMapped;
@@ -37,11 +39,12 @@ private:
 	uint8_t *videoRam;
 	uint8_t *romBankSwitchable;
 	uint8_t *romBank0;
+    uint8_t *bootRom;
 
 	uint8_t *decodeAddress(uint16_t * address);
 
 public:
-	Memory();
+	Memory(uint8_t *bootRom, uint8_t* gameRom);
 	~Memory();
 
 	uint16_t read16(uint16_t address);
