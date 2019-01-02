@@ -2,55 +2,7 @@
 #include "Display.hpp"
 #include "LogUtil.hpp"
 
-void Display::dumpBgTilesMap() {
-    uint16_t baseAddress = bgTilesMapAddress();
-    for (int y=0; y<32; y++) {
-        for (int x=0; x<32; x++) {
-            uint8_t tileNumber = memory->read8(baseAddress+(y*32)+x);
-            cout << cout8Hex(tileNumber) << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
-}
-
-void Display::dumpBgTilesData() {
-    uint16_t baseAddress = bgTilesDataAddress();
-    for (int a=0; a<0x1000; a+=16) {
-        int sum = 0;
-        for (int i = 0; i < 16; i++) {
-            sum += memory->read8(baseAddress+a+i);
-        }
-        if (sum > 0) renderTile(baseAddress+a);
-    }
-    cout << "---------------------------------------" << endl;
-}
-
-/*
-90b$08
-TN: $990c$09
-TN: $990d$0a
-TN: $990e$0b
-TN: $990f$0c
-TN: $9910$19
-TN: $9911$00
-TN: $9912$00
-TN: $9913$00
-TN: $9914$00
-TN: $9915$00
-TN: $9916$00
-TN: $9917$00
-TN: $9918$00
-TN: $9919$00
-TN: $991a$00
-TN: $991b$00
-TN: $991c$00
-TN: $991d$00
-TN: $991e$00
-TN: $991f$00
-*/
-
-void Display::drawBackground() {
+void Display::drawScreen() {
     uint16_t tileMapAddress = bgTilesMapAddress();
     for (int y = 0; y < 144; y++) {
         int rowInTilesMap = y/8; // Each tile is 8 px tall
@@ -61,7 +13,6 @@ void Display::drawBackground() {
             uint8_t tileNumber = memory->read8(tileNumberAddress);
 
             if (tileNumber != 0) {
-                //cout << "TN: " << cout16Hex(tileNumberAddress) << cout8Hex(tileNumber) << endl;
                 hasTile = true;
                 uint16_t tileAddress = addressForTile(tileNumber);       // Retrieve tile
 
@@ -88,6 +39,54 @@ void Display::drawBackground() {
     }
 
     cout << endl;
+}
+
+void Display::drawLine() {
+    // Read last drew line from LY register
+    uint8_t line = memory->read8(LY);
+    // Increment for new line and modulo 154 to reset if necessary
+    line = (line+1)%154;
+    // Write the current line back into LY
+    memory->write8(LY, line);
+
+    if (line > 144) {
+        // We are in VBlank
+        return;
+    }
+
+    // Go on drawing the tiles pixels for this line
+    int rowInTilesMap = line/8; // Each tile is 8 px tall
+    bool hasTile = false;
+    uint16_t tileMapAddress = bgTilesMapAddress();
+    for (int x = 0; x < 160; x++) {
+        int colInTilesMap = x/8; // Each tile is 8 px wide
+        uint16_t tileNumberAddress = tileMapAddress + (rowInTilesMap*32)+colInTilesMap;
+        uint8_t tileNumber = memory->read8(tileNumberAddress);
+
+        if (tileNumber != 0) {
+            hasTile = true;
+            uint16_t tileAddress = addressForTile(tileNumber);       // Retrieve tile
+
+            int xInTile = x%8, yInTile = line%8;                     // Calculate positions in tile for current px
+            uint16_t yOffsetInTile = yInTile*2;                      // Two bytes per row
+            uint8_t xBitInTileBytes = (7-xInTile);                   // msb is first pixel, lsb is last pixel
+
+            uint8_t lsb = memory->read8(tileAddress+yOffsetInTile);
+            uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1);
+
+            uint8_t mask = 1 << xBitInTileBytes;
+            uint8_t msbc = (msb & mask) >> (xBitInTileBytes-1);
+            uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
+            uint8_t color = msbc | lsbc;
+
+            // if (color == 1) cout << "O";
+            // else if (color == 2) cout << "x";
+            // else if (color == 3) cout << "X";
+            // else if (color == 0) cout << " ";
+        }
+    }
+
+    // if (hasTile) cout << endl;
 }
 
 void Display::renderTile(uint16_t address) {

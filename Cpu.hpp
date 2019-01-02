@@ -68,7 +68,8 @@ public:
     Cpu(Memory *memory);
 
     void dumpStatus();
-	void cycle();
+	void cycle(int numberOfCycles);
+    void execute();
 };
 
 #endif

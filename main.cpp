@@ -23,15 +23,29 @@ int main(int argc, char **argv) {
 
     Display display(&memory);
     Cpu cpu(&memory);
+
+    double displayUpdateFrequencyHz = 60.0;
+    int totalNumerOfRows = 154;
+    double rowDrawFrequencyHz = displayUpdateFrequencyHz * totalNumerOfRows;
+    double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
+
+    int lineCounter = 0;
     do {
-        //cpu.dumpStatus();
-        cpu.cycle();
-        //display.dumpBgTilesMap();
-        display.drawBackground();
-        if (cpu.regPC == 0x0068) {
-            break;
-            //this_thread::sleep_for(chrono::milliseconds(1000));
-        }
+        //display.doOAMSearch();
+        //display.doHBlank();
+
+        // if (lineCounter == 0) {
+        //     cout << "SCY: " << cout8Hex(memory.read8(SCY)) << endl;
+        // }
+
+        display.drawLine();
+        cpu.cycle(456);
+
+        this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
+
+        lineCounter++;
+        lineCounter %= totalNumerOfRows;
+
     } while (!cpu.unimplemented);
     cout << "End" << endl;
 }

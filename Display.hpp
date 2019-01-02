@@ -27,8 +27,7 @@ public:
     uint16_t addressForTile(int8_t tileNumber);
     uint16_t bgTilesMapAddress();
 
-    void dumpBgTilesMap();
-    void dumpBgTilesData();
-    void drawBackground();
+    void drawLine();
+    void drawScreen();
     void renderTile(uint16_t address);
 };
