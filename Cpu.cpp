@@ -77,6 +77,13 @@ uint16_t Cpu::imm16() {
     break;                                \
 }
 
+#define OPCODE_RST(address) {             \
+    push16(regPC);                        \
+    regPC = address;                      \
+    USE_CYCLES(32);                       \
+    break;                                \
+}
+
 #define OPCODE_DEC_REG_8_BIT(REG) {                                      \
     TRACE_CPU(OPCODE_PFX << "DEC " << #REG);                             \
     setReg##REG(reg##REG()-1);                                           \
@@ -803,6 +810,22 @@ void Cpu::execute() {
         case 0xA6: OPCODE_AND_REGPTR_8_BIT(HL);
         // AND n
         case 0xE6: OPCODE_AND_IMM_8_BIT();
+        // RST 00
+        case 0xC7: OPCODE_RST(0x00);
+        // RST 08
+        case 0xCF: OPCODE_RST(0x08);
+        // RST 10
+        case 0xD7: OPCODE_RST(0x10);
+        // RST 18
+        case 0xDF: OPCODE_RST(0x18);
+        // RST 20
+        case 0xE7: OPCODE_RST(0x20);
+        // RST 28
+        case 0xEF: OPCODE_RST(0x28);
+        // RST 30
+        case 0xF7: OPCODE_RST(0x30);
+        // RST 38
+        case 0xFF: OPCODE_RST(0x38);
 
         // LD A, (HL+)
         case 0x2A:
