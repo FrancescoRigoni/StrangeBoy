@@ -127,6 +127,13 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_JP_HL() {                                                              \
+    TRACE_CPU(OPCODE_PFX << "JP (HL)");                                               \
+    regPC = regHL;                                                                    \
+    USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
 #define OPCODE_LD_N_NN_16_BIT(REG) {                                                  \
     uint16_t arg = imm16();                                                           \
     TRACE_CPU(OPCODE_PFX << "LD " << #REG << "," << cout16Hex(arg));                  \
@@ -531,6 +538,8 @@ void Cpu::execute() {
         case 0x1E: OPCODE_LD_REG_N_8_BIT(E);
         // JP nn
         case 0xC3: OPCODE_JP();
+        // JP (HL)
+        case 0xE9: OPCODE_JP_HL();
         // JR n
         case 0x18: OPCODE_JR_COND(true, ALWAYS);
         // JR NZ, n
