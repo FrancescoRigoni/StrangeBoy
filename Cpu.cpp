@@ -68,6 +68,15 @@ uint16_t Cpu::imm16() {
     break;                                \
 }
 
+#define OPCODE_CPL() {                    \
+    TRACE_CPU(OPCODE_PFX << "CPL");       \
+    setRegA(~regA());                     \
+    setFlag(FLAG_SUBTRACT);               \
+    setFlag(FLAG_HALF_CARRY);             \
+    USE_CYCLES(4);                        \
+    break;                                \
+}
+
 #define OPCODE_DEC_REG_8_BIT(REG) {                                      \
     TRACE_CPU(OPCODE_PFX << "DEC " << #REG);                             \
     setReg##REG(reg##REG()-1);                                           \
@@ -379,11 +388,41 @@ uint16_t Cpu::imm16() {
     USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
-#define OPCODE_OR_IMM_8_BIT(REGPTR) {                                                 \
+#define OPCODE_OR_IMM_8_BIT() {                                                       \
     uint8_t arg = imm8();                                                             \
     TRACE_CPU(OPCODE_PFX << "OR " << cout8Hex(arg));                                  \
     setRegA(regA() | arg);                                                            \
     OPCODE_OR_8_BIT_FLAGS();                                                          \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_AND_8_BIT_FLAGS() {                                                    \
+    setOrClearFlag(FLAG_ZERO, regA() == 0);                                           \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    setFlag(FLAG_HALF_CARRY);                                                         \
+    clearFlag(FLAG_CARRY);                                                            \
+}
+#define OPCODE_AND_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_PFX << "AND " << #REG);                                          \
+    setRegA(regA() & reg##REG());                                                     \
+    OPCODE_AND_8_BIT_FLAGS();                                                         \
+    USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_AND_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_PFX << "AND (" << #REGPTR << ")");                               \
+    uint8_t arg = memory->read8(reg##REGPTR);                                         \
+    setRegA(regA() & arg);                                                            \
+    OPCODE_AND_8_BIT_FLAGS();                                                         \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_AND_IMM_8_BIT() {                                                      \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "AND " << cout8Hex(arg));                                 \
+    setRegA(regA() & arg);                                                            \
+    OPCODE_AND_8_BIT_FLAGS();                                                         \
     USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
@@ -744,6 +783,26 @@ void Cpu::execute() {
         case 0xB6: OPCODE_OR_REGPTR_8_BIT(HL);
         // OR n
         case 0xF6: OPCODE_OR_IMM_8_BIT();
+        // CPL
+        case 0x2F: OPCODE_CPL();
+        // AND A
+        case 0xA7: OPCODE_AND_REG_8_BIT(A);
+        // AND B
+        case 0xA0: OPCODE_AND_REG_8_BIT(B);
+        // AND C
+        case 0xA1: OPCODE_AND_REG_8_BIT(C);
+        // AND D
+        case 0xA2: OPCODE_AND_REG_8_BIT(D);
+        // AND E
+        case 0xA3: OPCODE_AND_REG_8_BIT(E);
+        // AND H
+        case 0xA4: OPCODE_AND_REG_8_BIT(H);
+        // AND L
+        case 0xA5: OPCODE_AND_REG_8_BIT(L);
+        // AND (HL)
+        case 0xA6: OPCODE_AND_REGPTR_8_BIT(HL);
+        // AND n
+        case 0xE6: OPCODE_AND_IMM_8_BIT();
 
         // LD A, (HL+)
         case 0x2A:
