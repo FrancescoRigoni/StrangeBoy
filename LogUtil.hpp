@@ -19,7 +19,9 @@ using namespace std;
 #define OPCODE_CB_PFX     " : "
 
 #ifdef TRACE_CPU_ON
-    #define TRACE_CPU(expr) cout << expr;
+    #define TRACE_CPU(expr) {                          \
+        if (!memory->bootRomEnabled()) cout << expr;   \
+    }
 #else
     #define TRACE_CPU(expr) {}
 #endif

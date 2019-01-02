@@ -46,7 +46,27 @@ uint16_t Cpu::imm16() {
 
 #define USE_CYCLES(n) {     \
     cycles -= n;            \
-}    
+}
+
+#define OPCODE_NOP() {                     \
+    TRACE_CPU(OPCODE_PFX << "NOP");        \
+    USE_CYCLES(4);                         \
+    break;                                 \
+}
+
+#define OPCODE_DI() {                     \
+    TRACE_CPU(OPCODE_PFX << "DI");        \
+    interruptsEnabled = false;            \
+    USE_CYCLES(4);                        \
+    break;                                \
+}
+
+#define OPCODE_EI() {                     \
+    TRACE_CPU(OPCODE_PFX << "EI");        \
+    interruptsEnabled = true;             \
+    USE_CYCLES(4);                        \
+    break;                                \
+}
 
 #define OPCODE_DEC_REG_8_BIT(REG) {                                      \
     TRACE_CPU(OPCODE_PFX << "DEC " << #REG);                             \
@@ -55,6 +75,13 @@ uint16_t Cpu::imm16() {
     setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(reg##REG()) == 0xF);     \
     setFlag(FLAG_SUBTRACT);                                              \
     USE_CYCLES(4);                                                       \
+    break;                                                               \
+}
+
+#define OPCODE_DEC_REG_16_BIT(REG) {                                     \
+    TRACE_CPU(OPCODE_PFX << "DEC " << #REG);                             \
+    --reg##REG;                                                          \
+    USE_CYCLES(8);                                                       \
     break;                                                               \
 }
 
@@ -72,6 +99,14 @@ uint16_t Cpu::imm16() {
     bool eval = cond;                                                                 \
     regPC += eval ? signedOffset : 0;                                                 \
     USE_CYCLES(eval ? 12 : 8);                                                        \
+    break;                                                                            \
+}
+
+#define OPCODE_JP() {                                                                 \
+    uint16_t arg = imm16();                                                           \
+    TRACE_CPU(OPCODE_PFX << "JP " << cout16Hex(arg));                                 \
+    regPC = arg;                                                                      \
+    USE_CYCLES(12);                                                                   \
     break;                                                                            \
 }
 
@@ -123,7 +158,7 @@ uint16_t Cpu::imm16() {
 }
 #define OPCODE_INC_REG_16_BIT(REG) {                                                  \
     TRACE_CPU(OPCODE_PFX << "INC " << #REG);                                          \
-    reg##REG++;                                                                       \
+    ++reg##REG;                                                                       \
     USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
@@ -132,6 +167,14 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_PFX << "LD (" << #REGPTR << ")," << #REG);                       \
     memory->write8(reg##REGPTR, reg##REG());                                          \
     USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_LD_REGPTR_IMM_8_BIT(REGPTR) {                                          \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "LD (" << #REGPTR << ")," << cout8Hex(arg));              \
+    memory->write8(reg##REGPTR, arg);                                                 \
+    USE_CYCLES(12);                                                                   \
     break;                                                                            \
 }
 
@@ -315,6 +358,36 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_OR_8_BIT_FLAGS() {                                                     \
+    setOrClearFlag(FLAG_ZERO, regA() == 0);                                           \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+    clearFlag(FLAG_CARRY);                                                            \
+}
+#define OPCODE_OR_REG_8_BIT(REG) {                                                    \
+    TRACE_CPU(OPCODE_PFX << "OR " << #REG);                                           \
+    setRegA(regA() | reg##REG());                                                     \
+    OPCODE_OR_8_BIT_FLAGS();                                                          \
+    USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_OR_REGPTR_8_BIT(REGPTR) {                                              \
+    TRACE_CPU(OPCODE_PFX << "OR (" << #REGPTR << ")");                                \
+    uint8_t arg = memory->read8(reg##REGPTR);                                         \
+    setRegA(regA() | arg);                                                            \
+    OPCODE_OR_8_BIT_FLAGS();                                                          \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_OR_IMM_8_BIT(REGPTR) {                                                 \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "OR " << cout8Hex(arg));                                  \
+    setRegA(regA() | arg);                                                            \
+    OPCODE_OR_8_BIT_FLAGS();                                                          \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+
 void Cpu::dumpStatus() {
     TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
     TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
@@ -335,6 +408,8 @@ void Cpu::execute() {
     TRACE_CPU(cout16Hex(regPC-1) << "  :  " << cout8Hex(opcode));
 
     switch (opcode) {
+        // NOP
+        case 0x00: OPCODE_NOP();
         // DEC B
         case 0x05: OPCODE_DEC_REG_8_BIT(B); 
         // DEC D
@@ -345,6 +420,14 @@ void Cpu::execute() {
         case 0x1D: OPCODE_DEC_REG_8_BIT(E);
         // DEC C
         case 0x0D: OPCODE_DEC_REG_8_BIT(C);
+        // DEC BC
+        case 0x0B: OPCODE_DEC_REG_16_BIT(BC);
+        // DEC DE
+        case 0x1B: OPCODE_DEC_REG_16_BIT(DE);
+        // DEC HL
+        case 0x2B: OPCODE_DEC_REG_16_BIT(HL);
+        // DEC SP
+        case 0x3B: OPCODE_DEC_REG_16_BIT(SP);
         // INC A
         case 0x3C: OPCODE_INC_REG_8_BIT(A);
         // INC B
@@ -381,6 +464,8 @@ void Cpu::execute() {
         case 0x0E: OPCODE_LD_REG_N_8_BIT(C);
         // LD E, $n
         case 0x1E: OPCODE_LD_REG_N_8_BIT(E);
+        // JP nn
+        case 0xC3: OPCODE_JP();
         // JR n
         case 0x18: OPCODE_JR_COND(true, ALWAYS);
         // JR NZ, n
@@ -427,6 +512,8 @@ void Cpu::execute() {
         case 0x74: OPCODE_LD_REGPTR_REG_8_BIT(HL, H);
         // LD (HL), L
         case 0x75: OPCODE_LD_REGPTR_REG_8_BIT(HL, L);
+        // LD (HL), n
+        case 0x36: OPCODE_LD_REGPTR_IMM_8_BIT(HL);
         // LD (BC), A
         case 0x02: OPCODE_LD_REGPTR_REG_8_BIT(BC, A);
         // LD (DE), A
@@ -635,6 +722,35 @@ void Cpu::execute() {
         case 0x86: OPCODE_ADD_REGPTR_8_BIT(HL);
         // ADD n
         case 0xC6: OPCODE_ADD_IMM_8_BIT();
+        // DI
+        case 0xF3: OPCODE_DI();
+        // EI
+        case 0xFB: OPCODE_EI();
+        // OR A
+        case 0xB7: OPCODE_OR_REG_8_BIT(A);
+        // OR B
+        case 0xB0: OPCODE_OR_REG_8_BIT(B);
+        // OR C
+        case 0xB1: OPCODE_OR_REG_8_BIT(C);
+        // OR D
+        case 0xB2: OPCODE_OR_REG_8_BIT(D);
+        // OR E
+        case 0xB3: OPCODE_OR_REG_8_BIT(E);
+        // OR H
+        case 0xB4: OPCODE_OR_REG_8_BIT(H);
+        // OR L
+        case 0xB5: OPCODE_OR_REG_8_BIT(L);
+        // OR (HL)
+        case 0xB6: OPCODE_OR_REGPTR_8_BIT(HL);
+        // OR n
+        case 0xF6: OPCODE_OR_IMM_8_BIT();
+
+        // LD A, (HL+)
+        case 0x2A:
+            TRACE_CPU(OPCODE_PFX << "LD A, (HL+)");
+            setRegA(memory->read8(regHL++));
+            USE_CYCLES(8);
+            break;
 
         // LD (HL-),A
         case 0x32:

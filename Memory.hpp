@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#define MEMORY_SIZE                 0x10000
+
 #define INTERRUPTS_ENABLE_REG       0xFFFF
 #define BOOT_ROM_DISABLE_REG        0xFF50
 #define HIGH_RAM_START              0xFF80
@@ -26,24 +28,18 @@
 #define ROM_BANK_SWTC_SIZE 			0x4000
 #define ROM_BANK_0_SIZE 			0x4000
 
+#define BOOT_ROM_SIZE               0x100
+
 class Memory {
 private:
 	uint8_t interruptEnableReg;
-    uint8_t bootRomDisableReg = 0;
-
-	uint8_t *highRam;
-	uint8_t *ioMapped;
-	uint8_t *ramOAM;
-	uint8_t *internalRam;
-	uint8_t *ramBankSwitchable;
-	uint8_t *videoRam;
-	uint8_t *romBankSwitchable;
-	uint8_t *romBank0;
+    uint8_t *memory;
     uint8_t *bootRom;
+    uint8_t *gameRom;
 
     bool reading;
 
-	uint8_t *decodeAddress(uint16_t * address);
+	uint8_t *getMemoryAreaForAddress(uint16_t address);
 
 public:
 	Memory(uint8_t *bootRom, uint8_t* gameRom);
@@ -54,6 +50,8 @@ public:
 
 	void write16(uint16_t address, uint16_t value);
 	void write8(uint16_t address, uint8_t value);
+
+    bool bootRomEnabled();
 };
 
 #endif

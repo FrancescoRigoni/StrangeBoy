@@ -23,6 +23,8 @@ private:
     uint16_t regDE;
     uint16_t regHL;
 
+    bool interruptsEnabled = true;
+
     long cycles = 0;
 
     Memory *memory;

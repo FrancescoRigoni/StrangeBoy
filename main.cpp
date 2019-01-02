@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
         //     cout << "SCY: " << cout8Hex(memory.read8(SCY)) << endl;
         // }
 
-        display.drawLine();
         cpu.cycle(456);
+        display.drawLine();
 
         this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
 
