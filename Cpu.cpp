@@ -77,11 +77,12 @@ uint16_t Cpu::imm16() {
     break;                                \
 }
 
-#define OPCODE_RST(address) {             \
-    push16(regPC);                        \
-    regPC = address;                      \
-    USE_CYCLES(32);                       \
-    break;                                \
+#define OPCODE_RST(address) {                                   \
+    TRACE_CPU(OPCODE_PFX << "RST " << cout8Hex(address));       \
+    push16(regPC);                                              \
+    regPC = address;                                            \
+    USE_CYCLES(32);                                             \
+    break;                                                      \
 }
 
 #define OPCODE_DEC_REG_8_BIT(REG) {                                      \
@@ -371,6 +372,24 @@ uint16_t Cpu::imm16() {
     setOrClearFlag(FLAG_CARRY, regA() >= reg##REG());                                 \
     setRegA(result);                                                                  \
     USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
+
+// TODO check carry logic, half carry calculated from bit 11 WTF?
+#define OPCODE_ADD_HL_16_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_PFX << "ADD HL," << #REG);                                       \
+    uint32_t op1 = regHL;                                                             \
+    uint32_t op2 = reg##REG;                                                          \
+    uint32_t res = op1 + op2;                                                         \
+    regHL = res;                                                                      \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    uint16_t bit11Check = 0x1000;                                                     \
+    setOrClearFlag(FLAG_HALF_CARRY,                                                   \
+        (((uint16_t)lsbOf(op1) + (uint16_t)lsbOf(op2)) & bit11Check) == bit11Check);  \
+    setOrClearFlag(FLAG_CARRY,                                                        \
+        ((op1 + op2) & 0x10000) == 0x10000);                                          \
+    USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
@@ -826,6 +845,14 @@ void Cpu::execute() {
         case 0xF7: OPCODE_RST(0x30);
         // RST 38
         case 0xFF: OPCODE_RST(0x38);
+        // ADD HL,BC
+        case 0x09: OPCODE_ADD_HL_16_BIT(BC);
+        // ADD HL,DE
+        case 0x19: OPCODE_ADD_HL_16_BIT(DE);
+        // ADD HL,HL
+        case 0x29: OPCODE_ADD_HL_16_BIT(HL);
+        // ADD HL,SP
+        case 0x39: OPCODE_ADD_HL_16_BIT(SP);
 
         // LD A, (HL+)
         case 0x2A:
