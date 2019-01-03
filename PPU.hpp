@@ -14,18 +14,18 @@
 #define LCDC_SPRITE_SIZE                    1 << 2
 #define LCDC_BG_AND_WIN_DISPLAY             1
 
-class Display {
+class PPU {
 private:
     Memory * memory;
-
-public:
-    Display(Memory * memory) {
-        this->memory = memory;
-    }
-
+    
     uint16_t bgTilesDataAddress();
     uint16_t addressForTile(int8_t tileNumber);
     uint16_t bgTilesMapAddress();
+
+public:
+    PPU(Memory * memory) {
+        this->memory = memory;
+    }
 
     void drawLine();
 };

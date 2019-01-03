@@ -5,9 +5,11 @@
 #include <thread>
 
 #include "Memory.hpp"
-#include "Display.hpp"
+#include "PPU.hpp"
 #include "Cpu.hpp"
 #include "LogUtil.hpp"
+
+#include "Screen.hpp"
 
 using namespace std;
 
@@ -21,25 +23,28 @@ int main(int argc, char **argv) {
 
     Memory memory(bootRom, tetris);
 
-    Display display(&memory);
+    PPU ppu(&memory);
     Cpu cpu(&memory);
 
-    double displayUpdateFrequencyHz = 60.0;
+    double ppuUpdateFrequencyHz = 60.0;
     int totalNumerOfRows = 154;
-    double rowDrawFrequencyHz = displayUpdateFrequencyHz * totalNumerOfRows;
+    double rowDrawFrequencyHz = ppuUpdateFrequencyHz * totalNumerOfRows;
     double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
+
+    Screen screen;
+    screen.draw();
 
     int lineCounter = 0;
     do {
-        //display.doOAMSearch();
-        //display.doHBlank();
+        //ppu.doOAMSearch();
+        //ppu.doHBlank();
 
         // if (lineCounter == 0) {
         //     cout << "SCY: " << cout8Hex(memory.read8(SCY)) << endl;
         // }
 
         cpu.cycle(456);
-        display.drawLine();
+        ppu.drawLine();
 
         this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
 

@@ -1,8 +1,8 @@
 
-#include "Display.hpp"
+#include "PPU.hpp"
 #include "LogUtil.hpp"
 
-void Display::drawLine() {
+void PPU::drawLine() {
     // Read last drew line from LY register
     uint8_t line = memory->read8(LY, false);
     // Increment for new line and modulo 154 to reset if necessary
@@ -51,13 +51,13 @@ void Display::drawLine() {
 }
 
 // Note: opposite of what the gameboy manual says
-uint16_t Display::bgTilesDataAddress() {
+uint16_t PPU::bgTilesDataAddress() {
     uint8_t lcdc = memory->read8(LCDC, false);
     return !isBitSet(lcdc, LCDC_BG_AND_WIN_TILE_DATA_SELECT) ? 0x8000 : 0x8800;
 }
 
 // Note: opposite of what the gameboy manual says
-uint16_t Display::addressForTile(int8_t tileNumber) {
+uint16_t PPU::addressForTile(int8_t tileNumber) {
     uint8_t lcdc = memory->read8(LCDC, false);
     if (!isBitSet(lcdc, LCDC_BG_AND_WIN_TILE_DATA_SELECT)) {
         // Unsigned offset
@@ -72,7 +72,7 @@ uint16_t Display::addressForTile(int8_t tileNumber) {
     }
 }
 
-uint16_t Display::bgTilesMapAddress() {
+uint16_t PPU::bgTilesMapAddress() {
     uint8_t lcdc = memory->read8(LCDC, false);
     return isBitSet(lcdc, LCDC_BG_TILE_MAP_DISPLAY_SELECT) ? 0x9C00 : 0x9800;
 }
