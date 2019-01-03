@@ -119,6 +119,15 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_JP_COND(cond, strcond) {                                               \
+    int16_t addr = imm16();                                                           \
+    TRACE_CPU(OPCODE_PFX << "JP " << #strcond << "," << cout16Hex(addr));             \
+    bool eval = cond;                                                                 \
+    if (eval) regPC = addr;                                                           \
+    USE_CYCLES(eval ? 16 : 12);                                                       \
+    break;                                                                            \
+}
+
 #define OPCODE_JP() {                                                                 \
     uint16_t arg = imm16();                                                           \
     TRACE_CPU(OPCODE_PFX << "JP " << cout16Hex(arg));                                 \
@@ -221,6 +230,14 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_PFX << "LD " << #REGD << "," << #REGS);                          \
     setReg##REGD(reg##REGS());                                                        \
     USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+
+#define OPCODE_LD_REG_IMMADDR(REG) {                                                  \
+    uint16_t addr = imm16();                                                          \
+    TRACE_CPU(OPCODE_PFX << "LD " << #REG << "(" << cout16Hex(addr) << ")");          \
+    setReg##REG(memory->read8(addr));                                                 \
+    USE_CYCLES(16);                                                                   \
     break;                                                                            \
 }
 
@@ -517,6 +534,16 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_RET_COND(COND, CONDSTR) {                                              \
+    TRACE_CPU(OPCODE_CB_PFX << "RET " << #CONDSTR << endl);                           \
+    bool eval = COND;                                                                 \
+    if (eval) {                                                                       \
+        regPC = pop16();                                                              \
+    }                                                                                 \
+    USE_CYCLES(eval ? 20 : 8);                                                        \
+    break;                                                                            \
+}
+
 void Cpu::dumpStatus() {
     TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
     TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
@@ -597,6 +624,14 @@ void Cpu::execute() {
         case 0xC3: OPCODE_JP();
         // JP (HL)
         case 0xE9: OPCODE_JP_HL();
+        // JP NZ,nn
+        case 0xC2: OPCODE_JP_COND(!flag(FLAG_ZERO), NZ);
+        // JP Z,nn
+        case 0xCA: OPCODE_JP_COND(flag(FLAG_ZERO), Z);
+        // JP NC,nn
+        case 0xD2: OPCODE_JP_COND(!flag(FLAG_CARRY), NC);
+        // JP C,nn
+        case 0xDA: OPCODE_JP_COND(flag(FLAG_CARRY), C);
         // JR n
         case 0x18: OPCODE_JR_COND(true, ALWAYS);
         // JR NZ, n
@@ -653,6 +688,8 @@ void Cpu::execute() {
         case 0xEA: OPCODE_LD_IMM16PTR_REG_8_BIT(A);
         // LD A,(HL)
         case 0x7E: OPCODE_LD_REG_REGPTR_8_BIT(A, HL);
+        // LD A,(nn)
+        case 0xFA: OPCODE_LD_REG_IMMADDR(A);
         // LD B,(HL)
         case 0x46: OPCODE_LD_REG_REGPTR_8_BIT(B, HL);
         // LD C,(HL)
@@ -919,6 +956,14 @@ void Cpu::execute() {
         case 0x29: OPCODE_ADD_HL_16_BIT(HL);
         // ADD HL,SP
         case 0x39: OPCODE_ADD_HL_16_BIT(SP);
+        // RET NZ
+        case 0xC0: OPCODE_RET_COND(!flag(FLAG_ZERO), NZ);
+        // RET Z
+        case 0xC8: OPCODE_RET_COND(flag(FLAG_ZERO), Z);
+        // RET NC
+        case 0xD0: OPCODE_RET_COND(!flag(FLAG_CARRY), NC);
+        // RET C
+        case 0xD8: OPCODE_RET_COND(flag(FLAG_CARRY), C);
 
         // LD A, (HL+)
         case 0x2A:
@@ -938,7 +983,7 @@ void Cpu::execute() {
         case 0xC9: {
             TRACE_CPU(OPCODE_PFX << "RET");
             regPC = pop16();
-            USE_CYCLES(8);
+            USE_CYCLES(16);
             break;
         }
         // LD ($FF00+n),A

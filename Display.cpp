@@ -79,14 +79,14 @@ void Display::drawLine() {
             uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
             uint8_t color = msbc | lsbc;
 
-            if (color == 1) cout << "O";
-            else if (color == 2) cout << "x";
-            else if (color == 3) cout << "X";
-            else if (color == 0) cout << " ";
+            // if (color == 1) cout << "O";
+            // else if (color == 2) cout << "x";
+            // else if (color == 3) cout << "X";
+            // else if (color == 0) cout << " ";
         }
     }
 
-    if (hasTile) cout << endl;
+    // if (hasTile) cout << endl;
 }
 
 void Display::renderTile(uint16_t address) {
