@@ -460,6 +460,63 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_SWAP_8_BIT_FLAGS(result) {                                             \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+    clearFlag(FLAG_CARRY);                                                            \
+    setOrClearFlag(FLAG_ZERO, result == 0);                                           \
+}
+#define OPCODE_SWAP_REG_8_BIT(REG) {                                                  \
+    TRACE_CPU(OPCODE_CB_PFX << "SWAP " << #REG);                                      \
+    setReg##REG((lowNibbleOf(reg##REG()) << 4) | highNibbleOf(reg##REG()));           \
+    OPCODE_SWAP_8_BIT_FLAGS(reg##REG());                                              \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_SWAP_REGPTR_8_BIT(REGPTR) {                                            \
+    TRACE_CPU(OPCODE_CB_PFX << "SWAP (" << #REGPTR << ")");                           \
+    uint8_t arg = memory->read8(reg##REGPTR);                                         \
+    arg = (lowNibbleOf(arg) << 4) | highNibbleOf(arg);                                \
+    memory->write8(reg##REGPTR, arg);                                                 \
+    OPCODE_SWAP_8_BIT_FLAGS(arg);                                                     \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_RES_REG_8_BIT(BIT, REG) {                                              \
+    TRACE_CPU(OPCODE_CB_PFX << "RES " << cout8Hex(BIT) << "," << #REG);               \
+    uint8_t val = reg##REG();                                                         \
+    resetBit(BIT, &val);                                                              \
+    setReg##REG(val);                                                                 \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_RES_REGPTR_8_BIT(BIT, REGPTR) {                                        \
+    TRACE_CPU(OPCODE_CB_PFX << "RES " << cout8Hex(BIT) << ",(" << #REGPTR << ")");    \
+    uint8_t val = memory->read8(reg##REGPTR);                                         \
+    resetBit(BIT, &val);                                                              \
+    memory->write8(reg##REGPTR, val);                                                 \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_SET_REG_8_BIT(BIT, REG) {                                              \
+    TRACE_CPU(OPCODE_CB_PFX << "SET " << cout8Hex(BIT) << "," << #REG);               \
+    uint8_t val = reg##REG();                                                         \
+    setBit(BIT, &val);                                                                \
+    setReg##REG(val);                                                                 \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_SET_REGPTR_8_BIT(BIT, REGPTR) {                                        \
+    TRACE_CPU(OPCODE_CB_PFX << "SET " << cout8Hex(BIT) << ",(" << #REGPTR << ")");    \
+    uint8_t val = memory->read8(reg##REGPTR);                                         \
+    setBit(BIT, &val);                                                                \
+    memory->write8(reg##REGPTR, val);                                                 \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
 void Cpu::dumpStatus() {
     TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
     TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
@@ -947,6 +1004,279 @@ void Cpu::execute() {
             case 0x15: OPCODE_RL_REG_8_BIT(L);
             // RL (HL)
             case 0x16: OPCODE_RL_REGPTR_8_BIT(HL);
+            // SWAP A
+            case 0x37: OPCODE_SWAP_REG_8_BIT(A);
+            // SWAP B
+            case 0x30: OPCODE_SWAP_REG_8_BIT(B);
+            // SWAP C
+            case 0x31: OPCODE_SWAP_REG_8_BIT(C);
+            // SWAP D
+            case 0x32: OPCODE_SWAP_REG_8_BIT(D);
+            // SWAP E
+            case 0x33: OPCODE_SWAP_REG_8_BIT(E);
+            // SWAP H
+            case 0x34: OPCODE_SWAP_REG_8_BIT(H);
+            // SWAP L
+            case 0x35: OPCODE_SWAP_REG_8_BIT(L);
+            // SWAP (HL)
+            case 0x36: OPCODE_SWAP_REGPTR_8_BIT(HL);
+            // RES 0, B
+            case 0x80: OPCODE_RES_REG_8_BIT(0, B);
+            // RES 0, C
+            case 0x81: OPCODE_RES_REG_8_BIT(0, C);
+            // RES 0, D
+            case 0x82: OPCODE_RES_REG_8_BIT(0, D);
+            // RES 0, E
+            case 0x83: OPCODE_RES_REG_8_BIT(0, E);
+            // RES 0, H
+            case 0x84: OPCODE_RES_REG_8_BIT(0, H);
+            // RES 0, L
+            case 0x85: OPCODE_RES_REG_8_BIT(0, L);
+            // RES 0, (HL)
+            case 0x86: OPCODE_RES_REGPTR_8_BIT(0, HL);
+            // RES 0, A
+            case 0x87: OPCODE_RES_REG_8_BIT(0, A);
+            // RES 1, B
+            case 0x88: OPCODE_RES_REG_8_BIT(1, B);
+            // RES 1, C
+            case 0x89: OPCODE_RES_REG_8_BIT(1, C);
+            // RES 1, D
+            case 0x8A: OPCODE_RES_REG_8_BIT(1, D);
+            // RES 1, E
+            case 0x8B: OPCODE_RES_REG_8_BIT(1, E);
+            // RES 1, H
+            case 0x8C: OPCODE_RES_REG_8_BIT(1, H);
+            // RES 1, L
+            case 0x8D: OPCODE_RES_REG_8_BIT(1, L);
+            // RES 1, (HL)
+            case 0x8E: OPCODE_RES_REGPTR_8_BIT(1, HL);
+            // RES 1, A
+            case 0x8F: OPCODE_RES_REG_8_BIT(1, A);
+            // RES 2, B
+            case 0x90: OPCODE_RES_REG_8_BIT(2, B);
+            // RES 2, C
+            case 0x91: OPCODE_RES_REG_8_BIT(2, C);
+            // RES 2, D
+            case 0x92: OPCODE_RES_REG_8_BIT(2, D);
+            // RES 2, E
+            case 0x93: OPCODE_RES_REG_8_BIT(2, E);
+            // RES 2, H
+            case 0x94: OPCODE_RES_REG_8_BIT(2, H);
+            // RES 2, L
+            case 0x95: OPCODE_RES_REG_8_BIT(2, L);
+            // RES 2, (HL)
+            case 0x96: OPCODE_RES_REGPTR_8_BIT(2, HL);
+            // RES 2, A
+            case 0x97: OPCODE_RES_REG_8_BIT(2, A);
+            // RES 3, B
+            case 0x98: OPCODE_RES_REG_8_BIT(3, B);
+            // RES 3, C
+            case 0x99: OPCODE_RES_REG_8_BIT(3, C);
+            // RES 3, D
+            case 0x9A: OPCODE_RES_REG_8_BIT(3, D);
+            // RES 3, E
+            case 0x9B: OPCODE_RES_REG_8_BIT(3, E);
+            // RES 3, H
+            case 0x9C: OPCODE_RES_REG_8_BIT(3, H);
+            // RES 3, L
+            case 0x9D: OPCODE_RES_REG_8_BIT(3, L);
+            // RES 3, (HL)
+            case 0x9E: OPCODE_RES_REGPTR_8_BIT(3, HL);
+            // RES 3, A
+            case 0x9F: OPCODE_RES_REG_8_BIT(3, A);
+            // RES 4, B
+            case 0xA0: OPCODE_RES_REG_8_BIT(4, B);
+            // RES 4, C
+            case 0xA1: OPCODE_RES_REG_8_BIT(4, C);
+            // RES 4, D
+            case 0xA2: OPCODE_RES_REG_8_BIT(4, D);
+            // RES 4, E
+            case 0xA3: OPCODE_RES_REG_8_BIT(4, E);
+            // RES 4, H
+            case 0xA4: OPCODE_RES_REG_8_BIT(4, H);
+            // RES 4, L
+            case 0xA5: OPCODE_RES_REG_8_BIT(4, L);
+            // RES 4, (HL)
+            case 0xA6: OPCODE_RES_REGPTR_8_BIT(4, HL);
+            // RES 4, A
+            case 0xA7: OPCODE_RES_REG_8_BIT(4, A);
+            // RES 5, B
+            case 0xA8: OPCODE_RES_REG_8_BIT(5, B);
+            // RES 5, C
+            case 0xA9: OPCODE_RES_REG_8_BIT(5, C);
+            // RES 5, D
+            case 0xAA: OPCODE_RES_REG_8_BIT(5, D);
+            // RES 5, E
+            case 0xAB: OPCODE_RES_REG_8_BIT(5, E);
+            // RES 5, H
+            case 0xAC: OPCODE_RES_REG_8_BIT(5, H);
+            // RES 5, L
+            case 0xAD: OPCODE_RES_REG_8_BIT(5, L);
+            // RES 5, (HL)
+            case 0xAE: OPCODE_RES_REGPTR_8_BIT(5, HL);
+            // RES 5, A
+            case 0xAF: OPCODE_RES_REG_8_BIT(5, A);
+            // RES 6, B
+            case 0xB0: OPCODE_RES_REG_8_BIT(6, B);
+            // RES 6, C
+            case 0xB1: OPCODE_RES_REG_8_BIT(6, C);
+            // RES 6, D
+            case 0xB2: OPCODE_RES_REG_8_BIT(6, D);
+            // RES 6, E
+            case 0xB3: OPCODE_RES_REG_8_BIT(6, E);
+            // RES 6, H
+            case 0xB4: OPCODE_RES_REG_8_BIT(6, H);
+            // RES 6, L
+            case 0xB5: OPCODE_RES_REG_8_BIT(6, L);
+            // RES 6, (HL)
+            case 0xB6: OPCODE_RES_REGPTR_8_BIT(6, HL);
+            // RES 6, A
+            case 0xB7: OPCODE_RES_REG_8_BIT(6, A);
+            // RES 7, B
+            case 0xB8: OPCODE_RES_REG_8_BIT(7, B);
+            // RES 7, C
+            case 0xB9: OPCODE_RES_REG_8_BIT(7, C);
+            // RES 7, D
+            case 0xBA: OPCODE_RES_REG_8_BIT(7, D);
+            // RES 7, E
+            case 0xBB: OPCODE_RES_REG_8_BIT(7, E);
+            // RES 7, H
+            case 0xBC: OPCODE_RES_REG_8_BIT(7, H);
+            // RES 7, L
+            case 0xBD: OPCODE_RES_REG_8_BIT(7, L);
+            // RES 7, (HL)
+            case 0xBE: OPCODE_RES_REGPTR_8_BIT(7, HL);
+            // RES 7, A
+            case 0xBF: OPCODE_RES_REG_8_BIT(7, A);
+            // SET 0, B
+            case 0xC0: OPCODE_SET_REG_8_BIT(0, B);
+            // SET 0, C
+            case 0xC1: OPCODE_SET_REG_8_BIT(0, C);
+            // SET 0, D
+            case 0xC2: OPCODE_SET_REG_8_BIT(0, D);
+            // SET 0, E
+            case 0xC3: OPCODE_SET_REG_8_BIT(0, E);
+            // SET 0, H
+            case 0xC4: OPCODE_SET_REG_8_BIT(0, H);
+            // SET 0, L
+            case 0xC5: OPCODE_SET_REG_8_BIT(0, L);
+            // SET 0, (HL)
+            case 0xC6: OPCODE_SET_REGPTR_8_BIT(0, HL);
+            // SET 0, A
+            case 0xC7: OPCODE_SET_REG_8_BIT(0, A);
+            // SET 1, B
+            case 0xC8: OPCODE_SET_REG_8_BIT(1, B);
+            // SET 1, C
+            case 0xC9: OPCODE_SET_REG_8_BIT(1, C);
+            // SET 1, D
+            case 0xCA: OPCODE_SET_REG_8_BIT(1, D);
+            // SET 1, E
+            case 0xCB: OPCODE_SET_REG_8_BIT(1, E);
+            // SET 1, H
+            case 0xCC: OPCODE_SET_REG_8_BIT(1, H);
+            // SET 1, L
+            case 0xCD: OPCODE_SET_REG_8_BIT(1, L);
+            // SET 1, (HL)
+            case 0xCE: OPCODE_SET_REGPTR_8_BIT(1, HL);
+            // SET 1, A
+            case 0xCF: OPCODE_SET_REG_8_BIT(1, A);
+            // SET 2, B
+            case 0xD0: OPCODE_SET_REG_8_BIT(2, B);
+            // SET 2, C
+            case 0xD1: OPCODE_SET_REG_8_BIT(2, C);
+            // SET 2, D
+            case 0xD2: OPCODE_SET_REG_8_BIT(2, D);
+            // SET 2, E
+            case 0xD3: OPCODE_SET_REG_8_BIT(2, E);
+            // SET 2, H
+            case 0xD4: OPCODE_SET_REG_8_BIT(2, H);
+            // SET 2, L
+            case 0xD5: OPCODE_SET_REG_8_BIT(2, L);
+            // SET 2, (HL)
+            case 0xD6: OPCODE_SET_REGPTR_8_BIT(2, HL);
+            // SET 2, A
+            case 0xD7: OPCODE_SET_REG_8_BIT(2, A);
+            // SET 3, B
+            case 0xD8: OPCODE_SET_REG_8_BIT(3, B);
+            // SET 3, C
+            case 0xD9: OPCODE_SET_REG_8_BIT(3, C);
+            // SET 3, D
+            case 0xDA: OPCODE_SET_REG_8_BIT(3, D);
+            // SET 3, E
+            case 0xDB: OPCODE_SET_REG_8_BIT(3, E);
+            // SET 3, H
+            case 0xDC: OPCODE_SET_REG_8_BIT(3, H);
+            // SET 3, L
+            case 0xDD: OPCODE_SET_REG_8_BIT(3, L);
+            // SET 3, (HL)
+            case 0xDE: OPCODE_SET_REGPTR_8_BIT(3, HL);
+            // SET 3, A
+            case 0xDF: OPCODE_SET_REG_8_BIT(3, A);
+            // SET 4, B
+            case 0xE0: OPCODE_SET_REG_8_BIT(4, B);
+            // SET 4, C
+            case 0xE1: OPCODE_SET_REG_8_BIT(4, C);
+            // SET 4, D
+            case 0xE2: OPCODE_SET_REG_8_BIT(4, D);
+            // SET 4, E
+            case 0xE3: OPCODE_SET_REG_8_BIT(4, E);
+            // SET 4, H
+            case 0xE4: OPCODE_SET_REG_8_BIT(4, H);
+            // SET 4, L
+            case 0xE5: OPCODE_SET_REG_8_BIT(4, L);
+            // SET 4, (HL)
+            case 0xE6: OPCODE_SET_REGPTR_8_BIT(4, HL);
+            // SET 4, A
+            case 0xE7: OPCODE_SET_REG_8_BIT(4, A);
+            // SET 5, B
+            case 0xE8: OPCODE_SET_REG_8_BIT(5, B);
+            // SET 5, C
+            case 0xE9: OPCODE_SET_REG_8_BIT(5, C);
+            // SET 5, D
+            case 0xEA: OPCODE_SET_REG_8_BIT(5, D);
+            // SET 5, E
+            case 0xEB: OPCODE_SET_REG_8_BIT(5, E);
+            // SET 5, H
+            case 0xEC: OPCODE_SET_REG_8_BIT(5, H);
+            // SET 5, L
+            case 0xED: OPCODE_SET_REG_8_BIT(5, L);
+            // SET 5, (HL)
+            case 0xEE: OPCODE_SET_REGPTR_8_BIT(5, HL);
+            // SET 5, A
+            case 0xEF: OPCODE_SET_REG_8_BIT(5, A);
+            // SET 6, B
+            case 0xF0: OPCODE_SET_REG_8_BIT(6, B);
+            // SET 6, C
+            case 0xF1: OPCODE_SET_REG_8_BIT(6, C);
+            // SET 6, D
+            case 0xF2: OPCODE_SET_REG_8_BIT(6, D);
+            // SET 6, E
+            case 0xF3: OPCODE_SET_REG_8_BIT(6, E);
+            // SET 6, H
+            case 0xF4: OPCODE_SET_REG_8_BIT(6, H);
+            // SET 6, L
+            case 0xF5: OPCODE_SET_REG_8_BIT(6, L);
+            // SET 6, (HL)
+            case 0xF6: OPCODE_SET_REGPTR_8_BIT(6, HL);
+            // SET 6, A
+            case 0xF7: OPCODE_SET_REG_8_BIT(6, A);
+            // SET 7, B
+            case 0xF8: OPCODE_SET_REG_8_BIT(7, B);
+            // SET 7, C
+            case 0xF9: OPCODE_SET_REG_8_BIT(7, C);
+            // SET 7, D
+            case 0xFA: OPCODE_SET_REG_8_BIT(7, D);
+            // SET 7, E
+            case 0xFB: OPCODE_SET_REG_8_BIT(7, E);
+            // SET 7, H
+            case 0xFC: OPCODE_SET_REG_8_BIT(7, H);
+            // SET 7, L
+            case 0xFD: OPCODE_SET_REG_8_BIT(7, L);
+            // SET 7, (HL)
+            case 0xFE: OPCODE_SET_REGPTR_8_BIT(7, HL);
+            // SET 7, A
+            case 0xFF: OPCODE_SET_REG_8_BIT(7, A);
+
 
             default:
                 unimplemented = true;

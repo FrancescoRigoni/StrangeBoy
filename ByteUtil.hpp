@@ -41,4 +41,14 @@ inline bool isBitClear(uint8_t in, uint8_t bit) {
     return !isBitSet(in, bit);
 }
 
+inline void setBit(uint8_t bit, uint8_t* in) {
+    uint8_t mask = 1 << bit;
+    *in = *in | mask;
+}
+
+inline void resetBit(uint8_t bit, uint8_t* in) {
+    uint8_t mask = ~(1 << bit);
+    *in = *in & mask;
+}
+
 #endif
