@@ -38,18 +38,19 @@ private:
     uint8_t *gameRom;
 
     bool reading;
+    bool traceEnabled;
 
-	uint8_t *getMemoryAreaForAddress(uint16_t address);
+	uint8_t *getMemoryAreaForAddress(uint16_t *address);
 
 public:
 	Memory(uint8_t *bootRom, uint8_t* gameRom);
 	~Memory();
 
-	uint16_t read16(uint16_t address);
-	uint8_t read8(uint16_t address);
+	uint16_t read16(uint16_t address, bool trace = true);
+	uint8_t read8(uint16_t address, bool trace = true);
 
-	void write16(uint16_t address, uint16_t value);
-	void write8(uint16_t address, uint8_t value);
+	void write16(uint16_t address, uint16_t value, bool trace = true);
+	void write8(uint16_t address, uint8_t value, bool trace = true);
 
     bool bootRomEnabled();
 };

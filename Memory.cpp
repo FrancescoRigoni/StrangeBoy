@@ -17,36 +17,55 @@ Memory::~Memory() {
     delete[] gameRom;
 }
 
-uint16_t Memory::read16(uint16_t address) {
+uint16_t Memory::read16(uint16_t address, bool trace) {
+    traceEnabled = trace;
     reading = true;
-	uint8_t *decodedMemory = getMemoryAreaForAddress(address);
-	return (uint16_t)decodedMemory[address] | ((uint16_t)decodedMemory[address+1] << 8);
+    uint16_t decodedAddress = address;
+	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
+	return (uint16_t)decodedMemory[decodedAddress] | ((uint16_t)decodedMemory[decodedAddress+1] << 8);
 }
 
-uint8_t Memory::read8(uint16_t address) {
+uint8_t Memory::read8(uint16_t address, bool trace) {
+    traceEnabled = trace;
     reading = true;
-	uint8_t *decodedMemory = getMemoryAreaForAddress(address);
-	return decodedMemory[address];
+    uint16_t decodedAddress = address;
+	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
+	return decodedMemory[decodedAddress];
 }
 
-void Memory::write16(uint16_t address, uint16_t value) {
+void Memory::write16(uint16_t address, uint16_t value, bool trace) {
+    traceEnabled = trace;
     reading = false;
-	uint8_t *decodedMemory = getMemoryAreaForAddress(address);
-	decodedMemory[address] = (uint8_t)(value & 0xFF);
-	decodedMemory[address+1] = (uint8_t)((value & 0xFF00) >> 8);
+    uint16_t decodedAddress = address;
+	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
+	decodedMemory[decodedAddress] = (uint8_t)(value & 0xFF);
+	decodedMemory[decodedAddress+1] = (uint8_t)((value & 0xFF00) >> 8);
 }
 
-void Memory::write8(uint16_t address, uint8_t value) {
+void Memory::write8(uint16_t address, uint8_t value, bool trace) {
+    traceEnabled = trace;
     reading = false;
-	uint8_t *decodedMemory = getMemoryAreaForAddress(address);
-	decodedMemory[address] = value;
+    uint16_t decodedAddress = address;
+	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
+	decodedMemory[decodedAddress] = value;
 }
 
-uint8_t * Memory::getMemoryAreaForAddress(uint16_t address) {
-    if (address < BOOT_ROM_SIZE && bootRomEnabled()) {
+uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
+
+    if (traceEnabled && 
+        *address >= IO_START && 
+        *address < (IO_START+IO_MAPPED_SIZE) && 
+        *address != LY) {
+        TRACE_IO("Access to IO " << cout16Hex(*address) << " for " << (reading ? "reading" : "writing") << endl);
+    }
+
+    if (*address < BOOT_ROM_SIZE && bootRomEnabled()) {
         return bootRom;
-    } else if (address < VIDEO_RAM_START) {
+    } else if (*address < VIDEO_RAM_START) {
         return gameRom;
+    } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {
+        *address -= INTERNAL_RAM_SIZE;
+        return memory;
     } else {
         return memory;
     }

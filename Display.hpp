@@ -28,6 +28,4 @@ public:
     uint16_t bgTilesMapAddress();
 
     void drawLine();
-    void drawScreen();
-    void renderTile(uint16_t address);
 };
