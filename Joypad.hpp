@@ -7,6 +7,8 @@
 #include "ByteUtil.hpp"
 #include "IoDevice.hpp"
 
+#define P1 0xFF00
+
 #define JOYPAD_P15_BIT 5
 #define JOYPAD_P14_BIT 4
 #define JOYPAD_P13_BIT 3
@@ -28,7 +30,7 @@ private:
     uint8_t pSelect;
 
 public:
-    virtual void write8(uint8_t);
+    virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 };
 

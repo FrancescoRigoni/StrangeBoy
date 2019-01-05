@@ -8,6 +8,8 @@
 #include "ByteUtil.hpp"
 #include "IoDevice.hpp"
 
+#define DMA 0xFF46
+
 /**
 Typical DMA wait routine
 ld      a, $28            // 8 cycles
@@ -20,7 +22,7 @@ ld      a, $28            // 8 cycles
 class Dma : public IoDevice {
 private:
     Memory *memory;
-    
+
     int cpuCyclesLeftForTransfer = 0;
     uint16_t currentSourceAddress = 0;
     uint16_t currentDestinationAddress = 0;
@@ -28,7 +30,7 @@ private:
 public:
     Dma(Memory *memory);
 
-    virtual void write8(uint8_t);
+    virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
     void cycle(int cycles);

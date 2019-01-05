@@ -1,8 +1,13 @@
 
 #include "Screen.hpp"
 
+void Screen::nextLine() {
+    currentScanLine++;
+    currentScanLine %= 144;
+}
+
 void Screen::sendLine(uint8_t *pixels) {
-    SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+    SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
 
     SDL_Rect r;
     r.y = currentScanLine * 2;
@@ -19,8 +24,12 @@ void Screen::sendLine(uint8_t *pixels) {
 
     }
 
-    currentScanLine++;
-    currentScanLine %= 144;
+    // if (currentScanLine%8 == 0) {
+    //     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    //     SDL_RenderDrawLine(renderer, 0, currentScanLine*2, 320, currentScanLine*2);
+    // }
+
+    nextLine();
 
     if (currentScanLine == 0) {
         SDL_RenderPresent(renderer);

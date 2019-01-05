@@ -6,7 +6,7 @@ Dma::Dma(Memory *memory) {
     this->memory = memory;
 }
 
-void Dma::write8(uint8_t value) {
+void Dma::write8(uint16_t address, uint8_t value) {
     TRACE_DMA("Dma write" << endl);
     cpuCyclesLeftForTransfer = DMA_TRANSFER_CPU_CYCLES;
     currentSourceAddress = ((uint16_t)value) << 8;

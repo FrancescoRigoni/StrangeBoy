@@ -12,4 +12,5 @@ public:
     ~Screen();
 
     void sendLine(uint8_t *pixels);
+    void nextLine();
 };

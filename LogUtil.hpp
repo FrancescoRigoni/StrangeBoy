@@ -10,11 +10,12 @@ using namespace std;
 #define cout8Hex(value) hex << "$" << setfill('0') << setw(2) << +value
 #define cout16Hex(value) hex << "$" << setfill('0') << setw(4) << value
 
-#define TRACE_CPU_ON
+//#define TRACE_CPU_ON
 //#define TRACE_STACK_OP_ON
 //#define TRACE_OAM_ON
 //#define TRACE_VRAM_ON
 //#define TRACE_IO_ON
+#define TRACE_PPU_ON
 //#define TRACE_JOYPAD_ON
 //#define TRACE_DMA_ON
 
@@ -28,6 +29,12 @@ using namespace std;
     }
 #else
     #define TRACE_CPU(expr) {}
+#endif
+
+#ifdef TRACE_PPU_ON
+    #define TRACE_PPU(expr) cout << expr;
+#else
+    #define TRACE_PPU(expr) {}
 #endif
 
 #ifdef TRACE_STACK_OP_ON

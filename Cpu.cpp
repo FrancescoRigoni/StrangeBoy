@@ -7,8 +7,9 @@
 
 using namespace std;
 
-Cpu::Cpu(Memory *memory) {
+Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags) {
     this->memory = memory;
+    this->interruptFlags = interruptFlags;
 }
 
 void Cpu::push8(uint8_t val) {
@@ -625,25 +626,30 @@ void Cpu::dumpStatus() {
     TRACE_CPU(" BC: " << cout16Hex(regBC) << " DE: " << cout16Hex(regDE) << " HL: " << cout16Hex(regHL) << "] ");
 }
 
-void Cpu::ackVBlankInterrupt() {
-    uint8_t interruptEnableFlags = memory->read8(INTERRUPTS_ENABLE_REG, false);
-    uint8_t interruptFlags = memory->read8(IF, false);
-
-    if (isBitSet(interruptFlags, IF_BIT_VBLANK) && 
-        isBitSet(interruptEnableFlags, IE_BIT_VBLANK)) {
-
-        resetBit(IF_BIT_VBLANK, &interruptFlags);
-        memory->write8(IF, interruptFlags);
+void Cpu::acknowledgeInterrupts() {
+    if (interruptFlags->acknowledgeVBlankInterrupt()) {
         interruptMasterEnable = false;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_VBLANK;
+
+    } else if (interruptFlags->acknowledgeLCDCInterrupt()) {
+        interruptMasterEnable = false;
+        push16(regPC);
+        regPC = INTERRUPT_HANDLER_LCDC;
     }
+    /*
+    Priority:
+    V-Blank
+    LCDC Status
+    Timer Overflow Serial Transfer
+    Hi-Lo of P10-P13
+    */
 }
 
 void Cpu::cycle(int numberOfCycles) {
     // Check for interrupts
     if (interruptMasterEnable) {
-        ackVBlankInterrupt();
+        acknowledgeInterrupts();
     }
 
     cycles = numberOfCycles;

@@ -6,3 +6,4 @@ Makefile
 a.out
 *.bin
 .DS_Store
+compile_commands.json

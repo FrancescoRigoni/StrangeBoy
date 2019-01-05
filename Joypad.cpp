@@ -1,7 +1,7 @@
 
 #include "Joypad.hpp"
 
-void Joypad::write8(uint8_t value) {
+void Joypad::write8(uint16_t address, uint8_t value) {
     TRACE_JOYPAD(endl << "Joypad write " << cout8Hex(value) << endl);
     pSelect = value;
 }

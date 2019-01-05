@@ -6,6 +6,7 @@
 
 #include "Memory.hpp"
 #include "ByteUtil.hpp"
+#include "InterruptFlags.hpp"
 
 #define PC_INITIAL 0x0000
 
@@ -15,6 +16,7 @@
 #define FLAG_CARRY          0b00010000
 
 #define INTERRUPT_HANDLER_VBLANK 0x0040
+#define INTERRUPT_HANDLER_LCDC   0x0048
 
 class Cpu {
 private:
@@ -30,6 +32,7 @@ private:
     long cycles = 0;
 
     Memory *memory;
+    InterruptFlags *interruptFlags;
 
     void push8(uint8_t);
     void push16(uint16_t);
@@ -65,13 +68,13 @@ private:
     inline void setRegH(uint8_t val) { msbTo(&regHL, val); }
     inline void setRegL(uint8_t val) { lsbTo(&regHL, val); }
 
-    void ackVBlankInterrupt();
+    void acknowledgeInterrupts();
 
 public:
     uint16_t regPC = PC_INITIAL;
     bool unimplemented = false;
 
-    Cpu(Memory *memory);
+    Cpu(Memory *, InterruptFlags *);
 
     void dumpStatus();
 	void cycle(int numberOfCycles);

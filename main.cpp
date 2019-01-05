@@ -10,6 +10,8 @@
 #include "Cpu.hpp"
 #include "Joypad.hpp"
 #include "Dma.hpp"
+#include "LCDControlAndStat.hpp"
+#include "InterruptFlags.hpp"
 #include "LogUtil.hpp"
 
 using namespace std;
@@ -25,17 +27,28 @@ int main(int argc, char **argv) {
     Memory memory(bootRom, tetris);
 
     Joypad joypad;
-    memory.registerIoDevice(P1, &joypad);
     Dma dma(&memory);
-    memory.registerIoDevice(DMA, &dma);
+    LCDControlAndStat lcdControlAndStat;
+    InterruptFlags interruptFlags;
 
-    PPU ppu(&memory);
-    Cpu cpu(&memory);
+    memory.registerIoDevice(P1, &joypad);
+    memory.registerIoDevice(DMA, &dma);
+    memory.registerIoDevice(LCDC, &lcdControlAndStat);
+    memory.registerIoDevice(STAT, &lcdControlAndStat);
+    memory.registerIoDevice(SCY, &lcdControlAndStat);
+    memory.registerIoDevice(SCX, &lcdControlAndStat);
+    memory.registerIoDevice(LY, &lcdControlAndStat);
+    memory.registerIoDevice(LYC, &lcdControlAndStat);
+    memory.registerIoDevice(IF, &interruptFlags);
+    memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
+
+    PPU ppu(&memory, &lcdControlAndStat, &interruptFlags);
+    Cpu cpu(&memory, &interruptFlags);
 
     double ppuUpdateFrequencyHz = 60.0;
     int totalNumerOfRows = 154;
     double rowDrawFrequencyHz = ppuUpdateFrequencyHz * totalNumerOfRows;
-    double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
+    double mainLoopPeriodUs = 1;//(1000.0 / rowDrawFrequencyHz)*1000;
     //double mainLoopPeriodUs = 1000000;
     int lineCounter = 0;
     do {
@@ -44,9 +57,9 @@ int main(int argc, char **argv) {
 
         //for (int i = 0; i < (456/8); i++) {
             //dma.cycle(8);
-            cpu.cycle(456);
+            cpu.cycle(ppu.run());
+            ppu.nextState();
         //}
-        ppu.drawLine();
 
 
         this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
