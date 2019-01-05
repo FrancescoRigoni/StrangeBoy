@@ -182,6 +182,15 @@ uint16_t Cpu::imm16() {
     USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
+#define OPCODE_BIT_REGPTR_8_BIT(BIT, REGPTR) {                                        \
+    TRACE_CPU(OPCODE_CB_PFX << "BIT " << #BIT << ",(" << #REGPTR << ")");             \
+    uint8_t arg = memory->read8(reg##REGPTR);                                         \
+    setOrClearFlag(FLAG_ZERO, isBitClear(arg, BIT));                                  \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    setFlag(FLAG_HALF_CARRY);                                                         \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
 
 #define OPCODE_INC_8_BIT_FLAGS(value) {                                               \
     setOrClearFlag(FLAG_ZERO, value == 0);                                            \
@@ -558,6 +567,57 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_SLA_8_BIT_FLAGS(before, after) {                                       \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 7));                                  \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+}
+#define OPCODE_SLA_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_CB_PFX << "SLA " << #REG);                                       \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = before << 1;                                                      \
+    setReg##REG(after);                                                               \
+    OPCODE_SLA_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_SLA_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_CB_PFX << "SLA (" << #REGPTR << ")");                            \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before << 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_SLA_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_SRA_8_BIT_FLAGS(before, after) {                                       \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 0));                                  \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+}
+// TODO: Gameboy manual says "MSB doesn't change" ???
+#define OPCODE_SRA_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_CB_PFX << "SRA " << #REG);                                       \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = before >> 1;                                                      \
+    setReg##REG(after);                                                               \
+    OPCODE_SRA_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_SRA_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_CB_PFX << "SRA (" << #REGPTR << ")");                            \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before >> 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_SRA_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
 void Cpu::dumpStatus() {
     TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
     TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
@@ -568,15 +628,15 @@ void Cpu::dumpStatus() {
 void Cpu::ackVBlankInterrupt() {
     uint8_t interruptEnableFlags = memory->read8(INTERRUPTS_ENABLE_REG, false);
     uint8_t interruptFlags = memory->read8(IF, false);
-    if (isBitSet(IF_BIT_VBLANK, interruptFlags) && 
-        isBitSet(IE_BIT_VBLANK, interruptEnableFlags)) {
+
+    if (isBitSet(interruptFlags, IF_BIT_VBLANK) && 
+        isBitSet(interruptEnableFlags, IE_BIT_VBLANK)) {
 
         resetBit(IF_BIT_VBLANK, &interruptFlags);
         memory->write8(IF, interruptFlags);
         interruptMasterEnable = false;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_VBLANK;
-        cout << "VBlank interrupt happened!" << endl;
     }
 }
 
@@ -610,6 +670,10 @@ void Cpu::execute() {
         case 0x1D: OPCODE_DEC_REG_8_BIT(E);
         // DEC C
         case 0x0D: OPCODE_DEC_REG_8_BIT(C);
+        // DEC H
+        case 0x25: OPCODE_DEC_REG_8_BIT(H);
+        // DEC L
+        case 0x2D: OPCODE_DEC_REG_8_BIT(L);
         // DEC BC
         case 0x0B: OPCODE_DEC_REG_16_BIT(BC);
         // DEC DE
@@ -1008,6 +1072,13 @@ void Cpu::execute() {
             USE_CYCLES(8);
             break;
 
+        // LD A, (HL-)
+        case 0x3A:
+            TRACE_CPU(OPCODE_PFX << "LD A, (HL-)");
+            setRegA(memory->read8(regHL--));
+            USE_CYCLES(8);
+            break;
+
         // LD (HL-),A
         case 0x32:
             TRACE_CPU(OPCODE_PFX << "LD (HL-),A");
@@ -1077,8 +1148,134 @@ void Cpu::execute() {
         opcode = memory->read8(regPC++);
         TRACE_CPU(cout8Hex(opcode));
         switch (opcode) {
+            // BIT 0,B
+            case 0x40: OPCODE_BIT_REG_8_BIT(0, B);
+            // BIT 0,C
+            case 0x41: OPCODE_BIT_REG_8_BIT(0, C);
+            // BIT 0,D
+            case 0x42: OPCODE_BIT_REG_8_BIT(0, D);
+            // BIT 0,E
+            case 0x43: OPCODE_BIT_REG_8_BIT(0, E);
+            // BIT 0,H
+            case 0x44: OPCODE_BIT_REG_8_BIT(0, H);
+            // BIT 0,L
+            case 0x45: OPCODE_BIT_REG_8_BIT(0, L);
+            // BIT 0,(HL)
+            case 0x46: OPCODE_BIT_REGPTR_8_BIT(0, HL);
+            // BIT 0,A
+            case 0x47: OPCODE_BIT_REG_8_BIT(0, A);
+            // BIT 1,B
+            case 0x48: OPCODE_BIT_REG_8_BIT(1, B);
+            // BIT 1,C
+            case 0x49: OPCODE_BIT_REG_8_BIT(1, C);
+            // BIT 1,D
+            case 0x4A: OPCODE_BIT_REG_8_BIT(1, D);
+            // BIT 1,E
+            case 0x4B: OPCODE_BIT_REG_8_BIT(1, E);
+            // BIT 1,H
+            case 0x4C: OPCODE_BIT_REG_8_BIT(1, H);
+            // BIT 1,L
+            case 0x4D: OPCODE_BIT_REG_8_BIT(1, L);
+            // BIT 1,(HL)
+            case 0x4E: OPCODE_BIT_REGPTR_8_BIT(1, HL);
+            // BIT 1,A
+            case 0x4F: OPCODE_BIT_REG_8_BIT(1, A);
+            // BIT 2,B
+            case 0x50: OPCODE_BIT_REG_8_BIT(2, B);
+            // BIT 2,C
+            case 0x51: OPCODE_BIT_REG_8_BIT(2, C);
+            // BIT 2,D
+            case 0x52: OPCODE_BIT_REG_8_BIT(2, D);
+            // BIT 2,E
+            case 0x53: OPCODE_BIT_REG_8_BIT(2, E);
+            // BIT 2,H
+            case 0x54: OPCODE_BIT_REG_8_BIT(2, H);
+            // BIT 2,L
+            case 0x55: OPCODE_BIT_REG_8_BIT(2, L);
+            // BIT 2,(HL)
+            case 0x56: OPCODE_BIT_REGPTR_8_BIT(2, HL);
+            // BIT 2,A
+            case 0x57: OPCODE_BIT_REG_8_BIT(2, A);
+            // BIT 3,B
+            case 0x58: OPCODE_BIT_REG_8_BIT(3, B);
+            // BIT 3,C
+            case 0x59: OPCODE_BIT_REG_8_BIT(3, C);
+            // BIT 3,D
+            case 0x5A: OPCODE_BIT_REG_8_BIT(3, D);
+            // BIT 3,E
+            case 0x5B: OPCODE_BIT_REG_8_BIT(3, E);
+            // BIT 3,H
+            case 0x5C: OPCODE_BIT_REG_8_BIT(3, H);
+            // BIT 3,L
+            case 0x5D: OPCODE_BIT_REG_8_BIT(3, L);
+            // BIT 3,(HL)
+            case 0x5E: OPCODE_BIT_REGPTR_8_BIT(3, HL);
+            // BIT 3,A
+            case 0x5F: OPCODE_BIT_REG_8_BIT(3, A);
+            // BIT 4,B
+            case 0x60: OPCODE_BIT_REG_8_BIT(4, B);
+            // BIT 4,C
+            case 0x61: OPCODE_BIT_REG_8_BIT(4, C);
+            // BIT 4,D
+            case 0x62: OPCODE_BIT_REG_8_BIT(4, D);
+            // BIT 4,E
+            case 0x63: OPCODE_BIT_REG_8_BIT(4, E);
+            // BIT 4,H
+            case 0x64: OPCODE_BIT_REG_8_BIT(4, H);
+            // BIT 4,L
+            case 0x65: OPCODE_BIT_REG_8_BIT(4, L);
+            // BIT 4,(HL)
+            case 0x66: OPCODE_BIT_REGPTR_8_BIT(4, HL);
+            // BIT 4,A
+            case 0x67: OPCODE_BIT_REG_8_BIT(4, A);
+            // BIT 5,B
+            case 0x68: OPCODE_BIT_REG_8_BIT(5, B);
+            // BIT 5,C
+            case 0x69: OPCODE_BIT_REG_8_BIT(5, C);
+            // BIT 5,D
+            case 0x6A: OPCODE_BIT_REG_8_BIT(5, D);
+            // BIT 5,E
+            case 0x6B: OPCODE_BIT_REG_8_BIT(5, E);
+            // BIT 5,H
+            case 0x6C: OPCODE_BIT_REG_8_BIT(5, H);
+            // BIT 5,L
+            case 0x6D: OPCODE_BIT_REG_8_BIT(5, L);
+            // BIT 5,(HL)
+            case 0x6E: OPCODE_BIT_REGPTR_8_BIT(5, HL);
+            // BIT 5,A
+            case 0x6F: OPCODE_BIT_REG_8_BIT(5, A);
+            // BIT 6,B
+            case 0x70: OPCODE_BIT_REG_8_BIT(6, B);
+            // BIT 6,C
+            case 0x71: OPCODE_BIT_REG_8_BIT(6, C);
+            // BIT 6,D
+            case 0x72: OPCODE_BIT_REG_8_BIT(6, D);
+            // BIT 6,E
+            case 0x73: OPCODE_BIT_REG_8_BIT(6, E);
+            // BIT 6,H
+            case 0x74: OPCODE_BIT_REG_8_BIT(6, H);
+            // BIT 6,L
+            case 0x75: OPCODE_BIT_REG_8_BIT(6, L);
+            // BIT 6,(HL)
+            case 0x76: OPCODE_BIT_REGPTR_8_BIT(6, HL);
+            // BIT 6,A
+            case 0x77: OPCODE_BIT_REG_8_BIT(6, A);
+            // BIT 7,B
+            case 0x78: OPCODE_BIT_REG_8_BIT(7, B);
+            // BIT 7,C
+            case 0x79: OPCODE_BIT_REG_8_BIT(7, C);
+            // BIT 7,D
+            case 0x7A: OPCODE_BIT_REG_8_BIT(7, D);
+            // BIT 7,E
+            case 0x7B: OPCODE_BIT_REG_8_BIT(7, E);
             // BIT 7,H
             case 0x7C: OPCODE_BIT_REG_8_BIT(7, H);
+            // BIT 7,L
+            case 0x7D: OPCODE_BIT_REG_8_BIT(7, L);
+            // BIT 7,(HL)
+            case 0x7E: OPCODE_BIT_REGPTR_8_BIT(7, HL);
+            // BIT 7,A
+            case 0x7F: OPCODE_BIT_REG_8_BIT(7, A);
             // RL A
             case 0x17: OPCODE_RL_REG_8_BIT(A);
             // RL B
@@ -1367,7 +1564,38 @@ void Cpu::execute() {
             case 0xFE: OPCODE_SET_REGPTR_8_BIT(7, HL);
             // SET 7, A
             case 0xFF: OPCODE_SET_REG_8_BIT(7, A);
-
+            // SLA A
+            case 0x27: OPCODE_SLA_REG_8_BIT(A);
+            // SLA B
+            case 0x20: OPCODE_SLA_REG_8_BIT(B);
+            // SLA C
+            case 0x21: OPCODE_SLA_REG_8_BIT(C);
+            // SLA D
+            case 0x22: OPCODE_SLA_REG_8_BIT(D);
+            // SLA E
+            case 0x23: OPCODE_SLA_REG_8_BIT(E);
+            // SLA H
+            case 0x24: OPCODE_SLA_REG_8_BIT(H);
+            // SLA L
+            case 0x25: OPCODE_SLA_REG_8_BIT(L);
+            // SLA (HL)
+            case 0x26: OPCODE_SLA_REGPTR_8_BIT(HL);
+            // SRA A
+            case 0x2F: OPCODE_SRA_REG_8_BIT(A);
+            // SRA B
+            case 0x28: OPCODE_SRA_REG_8_BIT(B);
+            // SRA C
+            case 0x29: OPCODE_SRA_REG_8_BIT(C);
+            // SRA D
+            case 0x2A: OPCODE_SRA_REG_8_BIT(D);
+            // SRA E
+            case 0x2B: OPCODE_SRA_REG_8_BIT(E);
+            // SRA H
+            case 0x2C: OPCODE_SRA_REG_8_BIT(H);
+            // SRA L
+            case 0x2D: OPCODE_SRA_REG_8_BIT(L);
+            // SRA (HL)
+            case 0x2E: OPCODE_SRA_REGPTR_8_BIT(HL);
 
             default:
                 unimplemented = true;

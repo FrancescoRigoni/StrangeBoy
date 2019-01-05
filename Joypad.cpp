@@ -7,8 +7,8 @@ void Joypad::write8(uint8_t value) {
 }
 
 uint8_t Joypad::read8(uint16_t address) {
+    TRACE_JOYPAD(endl << "Joypad read " << endl);
     uint8_t out = 0;
-    buttonStart = true;
     if (isBitClear(pSelect, JOYPAD_P14_BIT)) {
         if (buttonRight) out |= (1 << JOYPAD_P10_BIT);
         if (buttonLeft) out |= (1 << JOYPAD_P11_BIT);

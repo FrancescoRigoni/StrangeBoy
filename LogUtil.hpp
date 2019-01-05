@@ -15,12 +15,13 @@ using namespace std;
 //#define TRACE_OAM_ON
 //#define TRACE_VRAM_ON
 //#define TRACE_IO_ON
-#define TRACE_JOYPAD_ON
-#define TRACE_DMA_ON
+//#define TRACE_JOYPAD_ON
+//#define TRACE_DMA_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
 
+//if (regPC >= 0x017e && regPC <= 0x020b) cout << expr;
 #ifdef TRACE_CPU_ON
     #define TRACE_CPU(expr) {                          \
         if (!memory->bootRomEnabled()) cout << expr;   \
