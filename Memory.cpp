@@ -54,7 +54,7 @@ void Memory::write16(uint16_t address, uint16_t value, bool trace) {
 void Memory::write8(uint16_t address, uint8_t value, bool trace) {
     auto ioMapping = ioMap.find(address);
     if (ioMapping != ioMap.end()) {
-        ioMap[address]->write8(address);
+        ioMap[address]->write8(value);
     }
 
     traceEnabled = trace;

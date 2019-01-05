@@ -9,6 +9,7 @@
 #include "PPU.hpp"
 #include "Cpu.hpp"
 #include "Joypad.hpp"
+#include "Dma.hpp"
 #include "LogUtil.hpp"
 
 using namespace std;
@@ -25,6 +26,9 @@ int main(int argc, char **argv) {
 
     Joypad joypad;
     memory.registerIoDevice(P1, &joypad);
+    Dma dma(&memory);
+    memory.registerIoDevice(DMA, &dma);
+
     PPU ppu(&memory);
     Cpu cpu(&memory);
 
@@ -38,12 +42,12 @@ int main(int argc, char **argv) {
         //ppu.doOAMSearch();
         //ppu.doHBlank();
 
-        // if (lineCounter == 0) {
-        //     cout << "SCY: " << cout8Hex(memory.read8(SCY)) << endl;
-        // }
-
-        cpu.cycle(456);
+        //for (int i = 0; i < (456/8); i++) {
+            //dma.cycle(8);
+            cpu.cycle(456);
+        //}
         ppu.drawLine();
+
 
         this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
 
