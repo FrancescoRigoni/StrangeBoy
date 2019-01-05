@@ -17,6 +17,10 @@ Memory::~Memory() {
     delete[] gameRom;
 }
 
+void Memory::registerIoDevice(uint16_t address, IoDevice *ioDevice) {
+    ioMap[address] = ioDevice;
+}
+
 uint16_t Memory::read16(uint16_t address, bool trace) {
     traceEnabled = trace;
     reading = true;
@@ -26,6 +30,11 @@ uint16_t Memory::read16(uint16_t address, bool trace) {
 }
 
 uint8_t Memory::read8(uint16_t address, bool trace) {
+    auto ioMapping = ioMap.find(address);
+    if (ioMapping != ioMap.end()) {
+        return ioMap[address]->read8(address);
+    }
+
     traceEnabled = trace;
     reading = true;
     uint16_t decodedAddress = address;
@@ -43,6 +52,11 @@ void Memory::write16(uint16_t address, uint16_t value, bool trace) {
 }
 
 void Memory::write8(uint16_t address, uint8_t value, bool trace) {
+    auto ioMapping = ioMap.find(address);
+    if (ioMapping != ioMap.end()) {
+        ioMap[address]->write8(address);
+    }
+
     traceEnabled = trace;
     reading = false;
     uint16_t decodedAddress = address;
@@ -55,7 +69,7 @@ uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
     if (traceEnabled && 
         *address >= IO_START && 
         *address < (IO_START+IO_MAPPED_SIZE) && 
-        *address != LY) {
+        *address == DMA) {
         TRACE_IO("Access to IO " << cout16Hex(*address) << " for " << (reading ? "reading" : "writing") << endl);
     }
 

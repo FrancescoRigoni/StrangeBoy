@@ -2,6 +2,17 @@
 #ifndef __IO_H__
 #define __IO_H__
 
+#define IE_BIT_VBLANK   0
+#define IE_BIT_LCDC     1
+#define IE_BIT_TIMER    2
+#define IE_BIT_SERIAL   3
+#define IE_BIT_JOYP     4
+
+#define IF_BIT_VBLANK   0
+#define IF_BIT_LCDC     1
+
+#define INTERRUPTS_ENABLE_REG 0xFFFF
+
 #define P1 					0xFF00
 #define SERIAL_TX_DATA		0xFF01
 #define SERIAL_IO_CTRL		0xFF02

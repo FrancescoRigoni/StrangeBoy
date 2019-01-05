@@ -3,6 +3,7 @@
 
 #include "Cpu.hpp"
 #include "LogUtil.hpp"
+#include "Io.hpp"
 
 using namespace std;
 
@@ -54,16 +55,16 @@ uint16_t Cpu::imm16() {
     break;                                 \
 }
 
-#define OPCODE_DI() {                     \
-    TRACE_CPU(OPCODE_PFX << "DI");        \
-    interruptsEnabled = false;            \
-    USE_CYCLES(4);                        \
-    break;                                \
+#define OPCODE_DI() {                                       \
+    TRACE_CPU(OPCODE_PFX << "DI");                          \
+    interruptMasterEnable = false;                          \
+    USE_CYCLES(4);                                          \
+    break;                                                  \
 }
 
 #define OPCODE_EI() {                     \
     TRACE_CPU(OPCODE_PFX << "EI");        \
-    interruptsEnabled = true;             \
+    interruptMasterEnable = true;         \
     USE_CYCLES(4);                        \
     break;                                \
 }
@@ -92,6 +93,19 @@ uint16_t Cpu::imm16() {
     setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(reg##REG()) == 0xF);     \
     setFlag(FLAG_SUBTRACT);                                              \
     USE_CYCLES(4);                                                       \
+    break;                                                               \
+}
+
+// TODO split flag logic, reuse from OPCODE_DEC_REG_8_BIT
+#define OPCODE_DEC_REGPTR_8_BIT(REGPTR) {                                \
+    TRACE_CPU(OPCODE_PFX << "DEC (" << #REGPTR << ")");                  \
+    uint8_t arg = memory->read8(reg##REGPTR);                            \
+    arg = arg - 1;                                                       \
+    memory->write8(reg##REGPTR, arg);                                    \
+    setOrClearFlag(FLAG_ZERO, arg == 0);                                 \
+    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(arg) == 0xF);            \
+    setFlag(FLAG_SUBTRACT);                                              \
+    USE_CYCLES(12);                                                      \
     break;                                                               \
 }
 
@@ -535,7 +549,7 @@ uint16_t Cpu::imm16() {
 }
 
 #define OPCODE_RET_COND(COND, CONDSTR) {                                              \
-    TRACE_CPU(OPCODE_CB_PFX << "RET " << #CONDSTR << endl);                           \
+    TRACE_CPU(OPCODE_PFX << "RET " << #CONDSTR << endl);                              \
     bool eval = COND;                                                                 \
     if (eval) {                                                                       \
         regPC = pop16();                                                              \
@@ -551,7 +565,27 @@ void Cpu::dumpStatus() {
     TRACE_CPU(" BC: " << cout16Hex(regBC) << " DE: " << cout16Hex(regDE) << " HL: " << cout16Hex(regHL) << "] ");
 }
 
+void Cpu::ackVBlankInterrupt() {
+    uint8_t interruptEnableFlags = memory->read8(INTERRUPTS_ENABLE_REG, false);
+    uint8_t interruptFlags = memory->read8(IF, false);
+    if (isBitSet(IF_BIT_VBLANK, interruptFlags) && 
+        isBitSet(IE_BIT_VBLANK, interruptEnableFlags)) {
+
+        resetBit(IF_BIT_VBLANK, &interruptFlags);
+        memory->write8(IF, interruptFlags);
+        interruptMasterEnable = false;
+        push16(regPC);
+        regPC = INTERRUPT_HANDLER_VBLANK;
+        cout << "VBlank interrupt happened!" << endl;
+    }
+}
+
 void Cpu::cycle(int numberOfCycles) {
+    // Check for interrupts
+    if (interruptMasterEnable) {
+        ackVBlankInterrupt();
+    }
+
     cycles = numberOfCycles;
     do {
         execute();
@@ -584,6 +618,8 @@ void Cpu::execute() {
         case 0x2B: OPCODE_DEC_REG_16_BIT(HL);
         // DEC SP
         case 0x3B: OPCODE_DEC_REG_16_BIT(SP);
+        // DEC (HL)
+        case 0x35: OPCODE_DEC_REGPTR_8_BIT(HL);
         // INC A
         case 0x3C: OPCODE_INC_REG_8_BIT(A);
         // INC B
@@ -986,6 +1022,16 @@ void Cpu::execute() {
             USE_CYCLES(16);
             break;
         }
+
+        // RETI
+        case 0xD9: {
+            TRACE_CPU(OPCODE_PFX << "RETI");
+            regPC = pop16();
+            interruptMasterEnable = true;
+            USE_CYCLES(16);
+            break;
+        }
+
         // LD ($FF00+n),A
         case 0xE0: {
             uint8_t arg = imm8();

@@ -1,28 +1,49 @@
 
 #include "PPU.hpp"
 #include "LogUtil.hpp"
+#include "ByteUtil.hpp"
 
 void PPU::drawLine() {
     // Read last drew line from LY register
     uint8_t line = memory->read8(LY, false);
     // Increment for new line and modulo 154 to reset if necessary
-    line = (line+1)%154;
+    line = (line+1)%160;
     // Write the current line back into LY
-    memory->write8(LY, line);
+    memory->write8(LY, line, false);
 
-    if (line > 144) {
+    // // Update LYC coincidence flag
+    // uint8_t lyc = memory->read8(LYC, false);
+    // if (line == lyc) {
+    //     uint8_t stat = memory->read8(STAT, false);
+    //     setBit(6, &stat);
+    //     memory->write8(STAT, stat, false);
+    // }
+
+    if (line == 144) {
+        // Generate VBlank interrupt
+        uint8_t interruptFlags = memory->read8(IF, false);
+        setBit(IF_BIT_VBLANK, &interruptFlags);
+        memory->write8(IF, interruptFlags, false);
+    }
+    if (line > 143) {
         // We are in VBlank
         return;
     }
+
+    uint8_t scrollY = memory->read8(SCY, false);
+    line += scrollY;
 
     // Go on drawing the tiles pixels for this line
     int rowInTilesMap = line/8; // Each tile is 8 px tall
     bool hasTile = false;
     uint16_t tileMapAddress = bgTilesMapAddress();
+    uint8_t *pixelsForLine = new uint8_t[160];
     for (int x = 0; x < 160; x++) {
         int colInTilesMap = x/8; // Each tile is 8 px wide
         uint16_t tileNumberAddress = tileMapAddress + (rowInTilesMap*32)+colInTilesMap;
         uint8_t tileNumber = memory->read8(tileNumberAddress, false);
+
+        pixelsForLine[x] = 0;
 
         if (tileNumber != 0) {
             hasTile = true;
@@ -40,12 +61,16 @@ void PPU::drawLine() {
             uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
             uint8_t color = msbc | lsbc;
 
+            pixelsForLine[x] = color;
             // if (color == 1) cout << "O";
             // else if (color == 2) cout << "x";
             // else if (color == 3) cout << "X";
             // else if (color == 0) cout << " ";
         }
     }
+
+    screen->sendLine(pixelsForLine);
+    delete[] pixelsForLine;
 
     // if (hasTile) cout << endl;
 }

@@ -2,6 +2,7 @@
 #include "Io.hpp"
 #include "Memory.hpp"
 #include "ByteUtil.hpp"
+#include "Screen.hpp"
 
 #include <cstdint>
 
@@ -17,6 +18,7 @@
 class PPU {
 private:
     Memory * memory;
+    Screen * screen;
     
     uint16_t bgTilesDataAddress();
     uint16_t addressForTile(int8_t tileNumber);
@@ -25,6 +27,10 @@ private:
 public:
     PPU(Memory * memory) {
         this->memory = memory;
+        screen = new Screen();
+    }
+    ~PPU() {
+        delete screen;
     }
 
     void drawLine();

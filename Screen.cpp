@@ -1,46 +1,55 @@
-#include <SDL2/SDL.h>
+
 #include "Screen.hpp"
 
-void Screen::draw() {
-    SDL_Window* window = NULL;
+void Screen::sendLine(uint8_t *pixels) {
+    SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+
+    SDL_Rect r;
+    r.y = currentScanLine * 2;
+    r.w = 2;
+    r.h = 2;
+    for (int i = 0; i < 160; i++) {
+        r.x = i*2;
+        if (pixels[i] == 0) SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
+        else if (pixels[i] == 1) SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        else if (pixels[i] == 2) SDL_SetRenderDrawColor(renderer, 60, 60, 60, 255);
+        else if (pixels[i] == 3) SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
+
+        SDL_RenderFillRect(renderer, &r);
+
+    }
+
+    currentScanLine++;
+    currentScanLine %= 144;
+
+    if (currentScanLine == 0) {
+        SDL_RenderPresent(renderer);
+    }
+}
+
+Screen::Screen() {
     window = SDL_CreateWindow
     (
         "Jeu de la vie", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        640,
-        480,
+        320,
+        288,
         SDL_WINDOW_SHOWN
     );
 
     // Setup renderer
-    SDL_Renderer* renderer = NULL;
-    renderer =  SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     // Set render color to red ( background will be rendered in this color )
-    SDL_SetRenderDrawColor( renderer, 255, 0, 0, 255 );
+    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
 
     // Clear winow
-    SDL_RenderClear( renderer );
+    SDL_RenderClear(renderer);
 
-    // Creat a rect at pos ( 50, 50 ) that's 50 pixels wide and 50 pixels high.
-    SDL_Rect r;
-    r.x = 50;
-    r.y = 50;
-    r.w = 50;
-    r.h = 50;
-
-    // Set render color to blue ( rect will be rendered in this color )
-    SDL_SetRenderDrawColor( renderer, 0, 0, 255, 255 );
-
-    // Render rect
-    SDL_RenderFillRect( renderer, &r );
-
-    // Render the rect to the screen
     SDL_RenderPresent(renderer);
+}
 
-    // Wait for 5 sec
-    SDL_Delay(20000);
-
+Screen::~Screen() {
     SDL_DestroyWindow(window);
     SDL_Quit();
 }

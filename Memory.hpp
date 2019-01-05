@@ -3,10 +3,13 @@
 #define __MEMORY_H__
 
 #include <cstdint>
+#include <unordered_map> 
+#include "IoDevice.hpp"
+
+using namespace std;
 
 #define MEMORY_SIZE                 0x10000
 
-#define INTERRUPTS_ENABLE_REG       0xFFFF
 #define BOOT_ROM_DISABLE_REG        0xFF50
 #define HIGH_RAM_START              0xFF80
 #define IO_START                    0xFF00
@@ -32,7 +35,6 @@
 
 class Memory {
 private:
-	uint8_t interruptEnableReg;
     uint8_t *memory;
     uint8_t *bootRom;
     uint8_t *gameRom;
@@ -40,11 +42,15 @@ private:
     bool reading;
     bool traceEnabled;
 
+    unordered_map<uint16_t, IoDevice *> ioMap; 
+
 	uint8_t *getMemoryAreaForAddress(uint16_t *address);
 
 public:
 	Memory(uint8_t *bootRom, uint8_t* gameRom);
 	~Memory();
+
+    void registerIoDevice(uint16_t, IoDevice *);
 
 	uint16_t read16(uint16_t address, bool trace = true);
 	uint8_t read8(uint16_t address, bool trace = true);

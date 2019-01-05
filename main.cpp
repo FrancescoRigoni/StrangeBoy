@@ -4,12 +4,12 @@
 #include <chrono>
 #include <thread>
 
+#include "Io.hpp"
 #include "Memory.hpp"
 #include "PPU.hpp"
 #include "Cpu.hpp"
+#include "Joypad.hpp"
 #include "LogUtil.hpp"
-
-#include "Screen.hpp"
 
 using namespace std;
 
@@ -23,6 +23,8 @@ int main(int argc, char **argv) {
 
     Memory memory(bootRom, tetris);
 
+    Joypad joypad;
+    memory.registerIoDevice(P1, &joypad);
     PPU ppu(&memory);
     Cpu cpu(&memory);
 
@@ -30,10 +32,7 @@ int main(int argc, char **argv) {
     int totalNumerOfRows = 154;
     double rowDrawFrequencyHz = ppuUpdateFrequencyHz * totalNumerOfRows;
     double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
-
-    Screen screen;
-    screen.draw();
-
+    //double mainLoopPeriodUs = 1000000;
     int lineCounter = 0;
     do {
         //ppu.doOAMSearch();

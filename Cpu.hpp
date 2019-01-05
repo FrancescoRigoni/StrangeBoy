@@ -14,6 +14,8 @@
 #define FLAG_HALF_CARRY     0b00100000
 #define FLAG_CARRY          0b00010000
 
+#define INTERRUPT_HANDLER_VBLANK 0x0040
+
 class Cpu {
 private:
 	uint16_t regSP;
@@ -23,7 +25,7 @@ private:
     uint16_t regDE;
     uint16_t regHL;
 
-    bool interruptsEnabled = true;
+    bool interruptMasterEnable = true;
 
     long cycles = 0;
 
@@ -62,6 +64,8 @@ private:
     inline void setRegE(uint8_t val) { lsbTo(&regDE, val); }
     inline void setRegH(uint8_t val) { msbTo(&regHL, val); }
     inline void setRegL(uint8_t val) { lsbTo(&regHL, val); }
+
+    void ackVBlankInterrupt();
 
 public:
     uint16_t regPC = PC_INITIAL;
