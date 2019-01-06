@@ -26,6 +26,13 @@ int main(int argc, char **argv) {
 
     Memory memory(bootRom, tetris);
 
+    uint8_t cartType = memory.read16(0x0147);
+
+    if (cartType != 0) {
+        cout << "Cartridge type is " << cout8Hex(cartType) << ". Still not handled" << endl;
+        return 1;
+    }
+
     Joypad joypad;
     Dma dma(&memory);
     LCDControlAndStat lcdControlAndStat;

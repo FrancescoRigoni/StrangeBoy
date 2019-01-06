@@ -321,7 +321,6 @@ uint16_t Cpu::imm16() {
     USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
-
 // Rotate left through carry (unlike RLC)
 #define OPCODE_RL_REGPTR_8_BIT(REGPTR) {                                              \
     TRACE_CPU(OPCODE_CB_PFX << "RL (" << #REGPTR << ")");                             \
@@ -330,6 +329,21 @@ uint16_t Cpu::imm16() {
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_RL_8_BIT_FLAGS(before, after);                                             \
     USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+// Rotate A right through carry (unlike RLC), some docs says always clear
+// zero flag, some others only clear if result is zero.
+#define OPCODE_RRA() {                                                                \
+    TRACE_CPU(OPCODE_PFX << "RRA");                                                   \
+    uint8_t before = regA();                                                          \
+    uint8_t after = before >> 1;                                                      \
+    if (flag(FLAG_CARRY)) after |= 0b10000000;                                        \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 0));                                  \
+    clearFlag(FLAG_ZERO);                                                             \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+    setRegA(after);                                                                   \
+    USE_CYCLES(4);                                                                    \
     break;                                                                            \
 }
 
@@ -1097,6 +1111,8 @@ void Cpu::execute() {
         case 0xD0: OPCODE_RET_COND(!flag(FLAG_CARRY), NC);
         // RET C
         case 0xD8: OPCODE_RET_COND(flag(FLAG_CARRY), C);
+        // RRA
+        case 0x1F: OPCODE_RRA();
 
         // LD A, (HL+)
         case 0x2A:
@@ -1648,17 +1664,18 @@ void Cpu::execute() {
 
             default:
                 unimplemented = true;
+                cout << endl << "Unimplemented CB " << cout8Hex(opcode) << endl;
                 break;
         }
         break;
 
         default:
-            TRACE_CPU("Unimplemented!!!");
             unimplemented = true;
+            cout << endl << "Unimplemented " << cout8Hex(opcode) << endl;
             break;
     }
 
-    TRACE_CPU(endl)
+    TRACE_CPU(endl);
 }
 
 
