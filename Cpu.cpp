@@ -117,14 +117,6 @@ uint16_t Cpu::imm16() {
     break;                                                               \
 }
 
-#define OPCODE_LD_REG_N_8_BIT(REG) {                                     \
-    uint8_t arg = imm8();                                                \
-    TRACE_CPU(OPCODE_PFX << "LD " << #REG << "," << cout8Hex(arg));      \
-    setReg##REG(arg);                                                    \
-    USE_CYCLES(8);                                                       \
-    break;                                                               \
-}
-
 #define OPCODE_JR_COND(cond, strcond) {                                               \
     int8_t signedOffset = imm8();                                                     \
     TRACE_CPU(OPCODE_PFX << "JR " << #strcond << "," << cout8Signed(signedOffset));   \
@@ -254,6 +246,13 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_PFX << "LD " << #REGD << "," << #REGS);                          \
     setReg##REGD(reg##REGS());                                                        \
     USE_CYCLES(4);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_LD_REG_IMM_8_BIT(REG) {                                                \
+    uint8_t arg = imm8();                                                             \
+    TRACE_CPU(OPCODE_PFX << "LD " << #REG << "," << cout8Hex(arg));                   \
+    setReg##REG(arg);                                                                 \
+    USE_CYCLES(8);                                                                    \
     break;                                                                            \
 }
 
@@ -741,17 +740,19 @@ void Cpu::execute() {
         // INC (HL)
         case 0x34: OPCODE_INC_REGPTR_8_BIT(HL);
         // LD A, $n
-        case 0x3E: OPCODE_LD_REG_N_8_BIT(A);
+        case 0x3E: OPCODE_LD_REG_IMM_8_BIT(A);
         // LD B,$n
-        case 0x06: OPCODE_LD_REG_N_8_BIT(B);
+        case 0x06: OPCODE_LD_REG_IMM_8_BIT(B);
         // LD D,$n
-        case 0x16: OPCODE_LD_REG_N_8_BIT(D);
+        case 0x16: OPCODE_LD_REG_IMM_8_BIT(D);
         // LD L, $n
-        case 0x2E: OPCODE_LD_REG_N_8_BIT(L);
+        case 0x2E: OPCODE_LD_REG_IMM_8_BIT(L);
         // LD C, $n
-        case 0x0E: OPCODE_LD_REG_N_8_BIT(C);
+        case 0x0E: OPCODE_LD_REG_IMM_8_BIT(C);
         // LD E, $n
-        case 0x1E: OPCODE_LD_REG_N_8_BIT(E);
+        case 0x1E: OPCODE_LD_REG_IMM_8_BIT(E);
+        // LD H,n
+        case 0x26: OPCODE_LD_REG_IMM_8_BIT(H);
         // JP nn
         case 0xC3: OPCODE_JP();
         // JP (HL)
