@@ -599,11 +599,11 @@ uint16_t Cpu::imm16() {
     clearFlag(FLAG_HALF_CARRY);                                                       \
     setOrClearFlag(FLAG_ZERO, after == 0);                                            \
 }
-// TODO: Gameboy manual says "MSB doesn't change" ???
 #define OPCODE_SRA_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_CB_PFX << "SRA " << #REG);                                       \
     uint8_t before = reg##REG();                                                      \
     uint8_t after = before >> 1;                                                      \
+    if (isBitSet(before, 7)) after |= 0b10000000;                                     \
     setReg##REG(after);                                                               \
     OPCODE_SRA_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(8);                                                                    \
@@ -613,8 +613,34 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_CB_PFX << "SRA (" << #REGPTR << ")");                            \
     uint8_t before = memory->read8(reg##REGPTR);                                      \
     uint8_t after = before >> 1;                                                      \
+    if (isBitSet(before, 7)) after |= 0b10000000;                                     \
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_SRA_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_SRL_8_BIT_FLAGS(before, after) {                                       \
+    setOrClearFlag(FLAG_CARRY, (before & 0x1) == 0x1);                                \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+}
+#define OPCODE_SRL_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_CB_PFX << "SRL " << #REG);                                       \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = before >> 1;                                                      \
+    setReg##REG(after);                                                               \
+    OPCODE_SRL_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_SRL_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_CB_PFX << "SRL (" << #REGPTR << ")");                            \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before >> 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_SRL_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(16);                                                                   \
     break;                                                                            \
 }
@@ -1602,6 +1628,22 @@ void Cpu::execute() {
             case 0x2D: OPCODE_SRA_REG_8_BIT(L);
             // SRA (HL)
             case 0x2E: OPCODE_SRA_REGPTR_8_BIT(HL);
+            // SRL A
+            case 0x3F: OPCODE_SRL_REG_8_BIT(A);
+            // SRL B
+            case 0x38: OPCODE_SRL_REG_8_BIT(B);
+            // SRL C
+            case 0x39: OPCODE_SRL_REG_8_BIT(C);
+            // SRL D
+            case 0x3A: OPCODE_SRL_REG_8_BIT(D);
+            // SRL E
+            case 0x3B: OPCODE_SRL_REG_8_BIT(E);
+            // SRL H
+            case 0x3C: OPCODE_SRL_REG_8_BIT(H);
+            // SRL L
+            case 0x3D: OPCODE_SRL_REG_8_BIT(L);
+            // SRL (HL)
+            case 0x3E: OPCODE_SRL_REGPTR_8_BIT(HL);
 
             default:
                 unimplemented = true;
