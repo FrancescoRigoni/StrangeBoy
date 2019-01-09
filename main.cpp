@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 #include "Io.hpp"
 #include "Memory.hpp"
@@ -16,21 +17,30 @@
 
 using namespace std;
 
-uint8_t *readRom(const char *fileName);
+uint8_t *readRom(const char *);
+void runGameBoy(Screen *, atomic<bool> *);
 
 int main(int argc, char **argv) {
-	cout << "Hello Gameboy" << endl;
+    atomic<bool> exit(false);
 
+    Screen screen;
+    thread gameboyThread(runGameBoy, &screen, &exit);
+    screen.run();
+
+    exit = true;
+    gameboyThread.join();
+}
+
+void runGameBoy(Screen *screen, atomic<bool> *exit) {
     uint8_t *bootRom = readRom("bootrom.bin");
     uint8_t *tetris = readRom("tetris.bin");
 
     Memory memory(bootRom, tetris);
-
     uint8_t cartType = memory.read16(0x0147);
 
     if (cartType != 0) {
         cout << "Cartridge type is " << cout8Hex(cartType) << ". Still not handled" << endl;
-        return 1;
+        return;
     }
 
     Joypad joypad;
@@ -49,33 +59,29 @@ int main(int argc, char **argv) {
     memory.registerIoDevice(IF, &interruptFlags);
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
 
-    PPU ppu(&memory, &lcdControlAndStat, &interruptFlags);
+    PPU ppu(&memory, &lcdControlAndStat, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
     double ppuUpdateFrequencyHz = 60.0;
     int totalNumerOfRows = 154;
     double rowDrawFrequencyHz = ppuUpdateFrequencyHz * totalNumerOfRows;
-    double mainLoopPeriodUs = 1;//(1000.0 / rowDrawFrequencyHz)*1000;
-    //double mainLoopPeriodUs = 1000000;
-    int lineCounter = 0;
-    do {
-        //ppu.doOAMSearch();
-        //ppu.doHBlank();
+    double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
 
+    double cpuClockSpeedMhz = 4.194304;
+    double oneCyclePeriodUs = 1 / cpuClockSpeedMhz;
+
+    do {
         //for (int i = 0; i < (456/8); i++) {
             //dma.cycle(8);
-            cpu.cycle(ppu.run());
+            int cycles = ppu.run();
+            cpu.cycle(cycles);
             ppu.nextState();
         //}
 
+        //double toSleepUs = oneCyclePeriodUs * cycles;
+        //this_thread::sleep_for(chrono::microseconds((int)toSleepUs));
 
-        this_thread::sleep_for(chrono::microseconds((int)mainLoopPeriodUs));
-
-        lineCounter++;
-        lineCounter %= totalNumerOfRows;
-
-    } while (!cpu.unimplemented);
-    cout << "End" << endl;
+    } while (!cpu.unimplemented && !exit->load());
 }
 
 uint8_t *readRom(const char *fileName) {

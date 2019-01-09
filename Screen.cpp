@@ -1,12 +1,47 @@
 
 #include "Screen.hpp"
+#include <iostream>
 
-void Screen::nextLine() {
-    currentScanLine++;
-    currentScanLine %= 144;
+#define SCREEN_HEIGHT_PX                            144
+#define SCREEN_WIDTH_PX                             160
+
+void Screen::run() {
+    SDL_Init(SDL_INIT_VIDEO);
+
+    window = SDL_CreateWindow
+    (
+        "Gameboy Emulator", 
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        320,
+        288,
+        0
+    );
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+    SDL_RenderClear(renderer);
+    SDL_RenderPresent(renderer);
+
+    bool isquit = false;
+    SDL_Event event;
+    while (!isquit) {
+        if (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                isquit = true;
+            }
+        }
+
+        drawNextLine();
+    }
+
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
-void Screen::sendLine(uint8_t *pixels) {
+void Screen::drawNextLine() {
+    uint8_t *pixels = popLine();
+
     SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
 
     SDL_Rect r;
@@ -29,36 +64,43 @@ void Screen::sendLine(uint8_t *pixels) {
     //     SDL_RenderDrawLine(renderer, 0, currentScanLine*2, 320, currentScanLine*2);
     // }
 
-    nextLine();
+    currentScanLine++;
+    currentScanLine %= 144;
 
     if (currentScanLine == 0) {
         SDL_RenderPresent(renderer);
     }
+
+    delete[] pixels;
 }
 
-Screen::Screen() {
-    window = SDL_CreateWindow
-    (
-        "Jeu de la vie", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        320,
-        288,
-        SDL_WINDOW_SHOWN
-    );
+void Screen::pushLine(uint8_t *pixels) {
+    unique_lock<mutex> lock(linesMutex);
 
-    // Setup renderer
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (linesQueue.size() > 144) {
+        tooManyLinesCondition.wait(lock);
+    }
 
-    // Set render color to red ( background will be rendered in this color )
-    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+    //cout << "Pushing line, total " << (int16_t)linesQueue.size() << endl;
 
-    // Clear winow
-    SDL_RenderClear(renderer);
-
-    SDL_RenderPresent(renderer);
+    linesQueue.push(pixels);
+    zeroLinesCondition.notify_one();
 }
 
-Screen::~Screen() {
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+uint8_t *Screen::popLine() {
+    unique_lock<mutex> lock(linesMutex);
+
+    if (linesQueue.size() == 0) {
+        zeroLinesCondition.wait(lock);
+    }
+
+    uint8_t *nextLine = linesQueue.front();
+    linesQueue.pop();
+
+    if (linesQueue.size() == (144/2)) {
+        tooManyLinesCondition.notify_one();
+    }
+
+    //cout << "Popped line, total " << (int16_t)linesQueue.size() << endl;
+    return nextLine;
 }

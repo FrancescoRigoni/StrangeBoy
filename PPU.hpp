@@ -23,7 +23,7 @@ private:
     uint8_t *decodeBackgroundPalette();
 
 public:
-    PPU(Memory *, LCDControlAndStat *, InterruptFlags *);
+    PPU(Memory *, LCDControlAndStat *, InterruptFlags *, Screen *);
     ~PPU();
 
     int run();

@@ -17,11 +17,15 @@
 #define CLOCK_TICKS_DURING_HBLANK           208
 
 
-PPU::PPU(Memory * memory, LCDControlAndStat * lcdControlAndStat, InterruptFlags * interruptFlags) {
+PPU::PPU(Memory * memory, 
+    LCDControlAndStat * lcdControlAndStat, 
+    InterruptFlags * interruptFlags,
+    Screen *screen) {
+
     this->memory = memory;
     this->lcdControlAndStat = lcdControlAndStat;
     this->interruptFlags = interruptFlags;
-    screen = new Screen();
+    this->screen = screen;
 
     lcdControlAndStat->stateVBlank();
     lcdControlAndStat->write8(LY, SCREEN_HEIGHT_INCLUDING_VBLANK-1);
@@ -104,7 +108,9 @@ void PPU::nextState() {
 void PPU::doDrawLine() {
     if (!lcdControlAndStat->isScreenOn()) {
         TRACE_PPU("Screen is off" << endl);
-        screen->nextLine();
+        uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
+        memset(pixelsForLine, sizeof(uint8_t), 0);
+        screen->pushLine(pixelsForLine);
         return;
     }
 
@@ -124,8 +130,7 @@ void PPU::doDrawLine() {
             drawSpritesPixels(line, pixelsForLine);
         }
 
-        screen->sendLine(pixelsForLine);
-        delete[] pixelsForLine;
+        screen->pushLine(pixelsForLine);
     }
 }
 
