@@ -72,11 +72,11 @@ void runGameBoy(Screen *screen, atomic<bool> *exit) {
 
     do {
         //for (int i = 0; i < (456/8); i++) {
-            //dma.cycle(8);
             int cycles = ppu.run();
+            dma.cycle(cycles);
             cpu.cycle(cycles);
             ppu.nextState();
-        //}
+        ///}
 
         //double toSleepUs = oneCyclePeriodUs * cycles;
         //this_thread::sleep_for(chrono::microseconds((int)toSleepUs));

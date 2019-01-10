@@ -96,3 +96,7 @@ bool LCDRegs::isWindowOn() {
 bool LCDRegs::isSpritesOn() {
     return isBitSet(lcdc, LCDC_SPRITE_DISPLAY_BIT);
 }
+
+int LCDRegs::spriteHeightPx() {
+    return isBitSet(lcdc, LCDC_SPRITE_SIZE_BIT) ? 16 : 8;
+}

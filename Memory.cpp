@@ -80,3 +80,7 @@ uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
 bool Memory::bootRomEnabled() {
     return read8(BOOT_ROM_DISABLE_REG) == 0;
 }
+
+void * Memory::getRawPointer(uint16_t address) {
+    return (void *)(memory + address);
+}

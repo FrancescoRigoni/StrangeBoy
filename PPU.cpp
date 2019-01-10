@@ -1,4 +1,5 @@
 
+#include <vector>
 #include "PPU.hpp"
 #include "LogUtil.hpp"
 #include "ByteUtil.hpp"
@@ -176,8 +177,39 @@ void PPU::drawWindowPixels(int line, uint8_t *pixels) {
     TRACE_PPU("Window enabled" << endl);
 }
 
+typedef struct {
+    uint8_t yPos;
+    uint8_t xPos;
+    uint8_t patternNumber;
+    uint8_t flags;
+} SpriteAttributeEntry;
+
+#define SPRITE_ATTRIBUTE_TABLE_START        0xFE00
+#define SPRITE_ATTRIBUTE_TABLE_SIZE         0x00A0
+#define SPRITE_PATTERN_TABLE_START          0x8000
+#define MAX_SPRITES_PER_LINE                    10
+
+#define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - 8
+#define SPRITE_SCREEN_Y(spriteYFromAttrTable) spriteYFromAttrTable - 16
+
 void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
-    //TRACE_PPU("Sprites enabled" << endl);
+    int spriteHeightPx = lcdRegs->spriteHeightPx();
+    vector<SpriteAttributeEntry *> spritesEntriesForLine;
+
+    for (uint16_t spriteAttribute = SPRITE_ATTRIBUTE_TABLE_START; 
+        spriteAttribute < (SPRITE_ATTRIBUTE_TABLE_START + SPRITE_ATTRIBUTE_TABLE_SIZE);
+        spriteAttribute += sizeof(SpriteAttributeEntry)) {
+
+        SpriteAttributeEntry *entry = (SpriteAttributeEntry*) memory->getRawPointer(spriteAttribute);
+        if (entry->yPos != 0 &&
+            SPRITE_SCREEN_Y(entry->yPos) - line < spriteHeightPx && 
+            spritesEntriesForLine.size() < MAX_SPRITES_PER_LINE) {
+            spritesEntriesForLine.push_back(entry);
+        }
+    }
+
+    if (spritesEntriesForLine.size() > 0) cout << "Line: " << line << " has sprites: " << spritesEntriesForLine.size() << endl;
+
 }
 
 uint8_t *PPU::decodeBackgroundPalette() {
