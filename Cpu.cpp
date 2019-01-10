@@ -684,6 +684,31 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
+#define OPCODE_RRC_8_BIT_FLAGS(before, after) {                                       \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 0));                                  \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+}
+#define OPCODE_RRC_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_CB_PFX << "RRC " << #REG);                                       \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = before >> 1;                                                      \
+    setReg##REG(after);                                                               \
+    OPCODE_RRC_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_RRC_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_CB_PFX << "RRC (" << #REGPTR << ")");                            \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before >> 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_RRC_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
 void Cpu::dumpStatus() {
     TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
     TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
@@ -1703,6 +1728,23 @@ void Cpu::execute() {
             case 0x05: OPCODE_RLC_REG_8_BIT(L);
             // RLC (HL)
             case 0x06: OPCODE_RLC_REGPTR_8_BIT(HL);
+            // RRC A
+            case 0x0F: OPCODE_RRC_REG_8_BIT(A);
+            // RRC B
+            case 0x08: OPCODE_RRC_REG_8_BIT(B);
+            // RRC C
+            case 0x09: OPCODE_RRC_REG_8_BIT(C);
+            // RRC D
+            case 0x0A: OPCODE_RRC_REG_8_BIT(D);
+            // RRC E
+            case 0x0B: OPCODE_RRC_REG_8_BIT(E);
+            // RRC H
+            case 0x0C: OPCODE_RRC_REG_8_BIT(C);
+            // RRC L
+            case 0x0D: OPCODE_RRC_REG_8_BIT(L);
+            // RRC (HL)
+            case 0x0E: OPCODE_RRC_REGPTR_8_BIT(HL);
+
 
 
             default:
