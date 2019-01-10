@@ -17,18 +17,18 @@
 #define CLOCK_TICKS_DURING_HBLANK           208
 
 
-PPU::PPU(Memory * memory, 
-    LCDControlAndStat * lcdControlAndStat, 
-    InterruptFlags * interruptFlags,
-    Screen *screen) {
+PPU::PPU(Memory *memory, 
+         LCDRegs *lcdRegs, 
+         InterruptFlags *interruptFlags,
+         Screen *screen) {
 
     this->memory = memory;
-    this->lcdControlAndStat = lcdControlAndStat;
+    this->lcdRegs = lcdRegs;
     this->interruptFlags = interruptFlags;
     this->screen = screen;
 
-    lcdControlAndStat->stateVBlank();
-    lcdControlAndStat->write8(LY, SCREEN_HEIGHT_INCLUDING_VBLANK-1);
+    lcdRegs->stateVBlank();
+    lcdRegs->write8(LY, SCREEN_HEIGHT_INCLUDING_VBLANK-1);
 }
 
 PPU::~PPU() {
@@ -36,17 +36,17 @@ PPU::~PPU() {
 }
 
 int PPU::run() {
-    if (lcdControlAndStat->inVBlank()) {
+    if (lcdRegs->inVBlank()) {
         return CLOCK_TICKS_LINE_DURING_VBLANK;
 
-    } else if (lcdControlAndStat->inOAMSearch()) {
+    } else if (lcdRegs->inOAMSearch()) {
         return CLOCK_TICKS_DURING_OAM_SEARCH;
 
-    } else if (lcdControlAndStat->inDrawLine()) {
+    } else if (lcdRegs->inDrawLine()) {
         doDrawLine();
         return CLOCK_TICKS_DURING_LINE_DRAW;
 
-    } else if (lcdControlAndStat->inHBlank()) {
+    } else if (lcdRegs->inHBlank()) {
         return CLOCK_TICKS_DURING_HBLANK;
 
     } else {
@@ -56,36 +56,36 @@ int PPU::run() {
 }
 
 void PPU::nextState() {
-    uint8_t stat = lcdControlAndStat->read8(STAT);
+    uint8_t stat = lcdRegs->read8(STAT);
 
-    if (lcdControlAndStat->inOAMSearch()) {
-        lcdControlAndStat->stateDrawLine();
+    if (lcdRegs->inOAMSearch()) {
+        lcdRegs->stateDrawLine();
         // LCDC interrupt is not generated for this state.
 
-    } else if (lcdControlAndStat->inDrawLine()) {
+    } else if (lcdRegs->inDrawLine()) {
         // Line was drawn, enter HBlank.
-        lcdControlAndStat->stateHBlank();
+        lcdRegs->stateHBlank();
 
         // Generate LCDC interrupt if the selection says so.
         if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_HBLANK_BIT)) {
             interruptFlags->interruptLCDC();
         }
 
-    } else if (lcdControlAndStat->inHBlank() || 
-               lcdControlAndStat->inVBlank()) {
+    } else if (lcdRegs->inHBlank() || 
+               lcdRegs->inVBlank()) {
         // Increment line number we are about to draw, reset to line zero if it overflows.
-        uint8_t line = lcdControlAndStat->read8(LY);
+        uint8_t line = lcdRegs->read8(LY);
         line = (line+1)%SCREEN_HEIGHT_INCLUDING_VBLANK;
-        lcdControlAndStat->write8(LY, line);
+        lcdRegs->write8(LY, line);
 
         // Set the ly, lyc coincidence bit if we are about to draw the lyc line.
-        uint8_t lyc = lcdControlAndStat->read8(LYC);
+        uint8_t lyc = lcdRegs->read8(LYC);
         if (line == lyc) setBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
         else resetBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
 
         if (line < SCREEN_HEIGHT_PX) {
             // We are still drawing inside the visible screen.
-            lcdControlAndStat->stateOAMSearch();
+            lcdRegs->stateOAMSearch();
 
             // Generate LCDC interrupt if the selection says so.
             if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_OAM_SEARCH_BIT)) {
@@ -94,7 +94,7 @@ void PPU::nextState() {
 
         } else if (line == SCREEN_HEIGHT_PX) {
             // We entered VBlank.
-            lcdControlAndStat->stateVBlank();
+            lcdRegs->stateVBlank();
             interruptFlags->interruptVBlank();
 
             // Generate LCDC interrupt if the selection says so.
@@ -106,7 +106,7 @@ void PPU::nextState() {
 }
 
 void PPU::doDrawLine() {
-    if (!lcdControlAndStat->isScreenOn()) {
+    if (!lcdRegs->isScreenOn()) {
         TRACE_PPU("Screen is off" << endl);
         uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
         memset(pixelsForLine, sizeof(uint8_t), 0);
@@ -115,18 +115,18 @@ void PPU::doDrawLine() {
     }
 
     // Read line from LY register
-    uint8_t line = lcdControlAndStat->read8(LY);
+    uint8_t line = lcdRegs->read8(LY);
 
     if (line < SCREEN_HEIGHT_PX) {
         uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
         memset(pixelsForLine, sizeof(uint8_t), 0);
-        if (lcdControlAndStat->isBackgroundOn()) {
+        if (lcdRegs->isBackgroundOn()) {
             drawBackgroundPixels(line, pixelsForLine);
         }
-        if (lcdControlAndStat->isWindowOn()) {
+        if (lcdRegs->isWindowOn()) {
             drawWindowPixels(line, pixelsForLine);
         }
-        if (lcdControlAndStat->isSpritesOn()) {
+        if (lcdRegs->isSpritesOn()) {
             drawSpritesPixels(line, pixelsForLine);
         }
 
@@ -135,14 +135,14 @@ void PPU::doDrawLine() {
 }
 
 void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
-    uint8_t scrollY = lcdControlAndStat->read8(SCY);
+    uint8_t scrollY = lcdRegs->read8(SCY);
     uint16_t scrolledLine = line + scrollY;
 
     uint8_t *backgroundPalette = decodeBackgroundPalette();
 
     // Go on drawing the tiles pixels for this line
     int rowInTilesMap = scrolledLine/BACKGROUND_TILE_HEIGHT_PX;
-    uint16_t tileMapAddress = lcdControlAndStat->addressForBackgroundTilesMap();
+    uint16_t tileMapAddress = lcdRegs->addressForBackgroundTilesMap();
 
     for (int x = 0; x < SCREEN_WIDTH_PX; x++) {
 
@@ -152,7 +152,7 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
             colInTilesMap;
         uint8_t tileNumber = memory->read8(tileNumberAddress, false);
 
-        uint16_t tileAddress = lcdControlAndStat->addressForBackgroundTile(tileNumber);
+        uint16_t tileAddress = lcdRegs->addressForBackgroundTile(tileNumber);
 
         int xInTile = x%BACKGROUND_TILE_WIDTH_PX;
         int yInTile = scrolledLine%BACKGROUND_TILE_HEIGHT_PX;    // Calculate positions in tile for current px

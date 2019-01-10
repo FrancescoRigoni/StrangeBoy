@@ -11,7 +11,7 @@
 #include "Cpu.hpp"
 #include "Joypad.hpp"
 #include "Dma.hpp"
-#include "LCDControlAndStat.hpp"
+#include "LCDRegs.hpp"
 #include "InterruptFlags.hpp"
 #include "LogUtil.hpp"
 
@@ -45,21 +45,21 @@ void runGameBoy(Screen *screen, atomic<bool> *exit) {
 
     Joypad joypad;
     Dma dma(&memory);
-    LCDControlAndStat lcdControlAndStat;
+    LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
 
     memory.registerIoDevice(P1, &joypad);
     memory.registerIoDevice(DMA, &dma);
-    memory.registerIoDevice(LCDC, &lcdControlAndStat);
-    memory.registerIoDevice(STAT, &lcdControlAndStat);
-    memory.registerIoDevice(SCY, &lcdControlAndStat);
-    memory.registerIoDevice(SCX, &lcdControlAndStat);
-    memory.registerIoDevice(LY, &lcdControlAndStat);
-    memory.registerIoDevice(LYC, &lcdControlAndStat);
+    memory.registerIoDevice(LCDC, &lcdRegs);
+    memory.registerIoDevice(STAT, &lcdRegs);
+    memory.registerIoDevice(SCY, &lcdRegs);
+    memory.registerIoDevice(SCX, &lcdRegs);
+    memory.registerIoDevice(LY, &lcdRegs);
+    memory.registerIoDevice(LYC, &lcdRegs);
     memory.registerIoDevice(IF, &interruptFlags);
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
 
-    PPU ppu(&memory, &lcdControlAndStat, &interruptFlags, screen);
+    PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
     double ppuUpdateFrequencyHz = 60.0;

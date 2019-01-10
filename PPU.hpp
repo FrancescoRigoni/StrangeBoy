@@ -3,16 +3,16 @@
 #include "Memory.hpp"
 #include "ByteUtil.hpp"
 #include "Screen.hpp"
-#include "LCDControlAndStat.hpp"
+#include "LCDRegs.hpp"
 #include "InterruptFlags.hpp"
 
 #include <cstdint>
 
 class PPU {
 private:
-    Memory * memory;
-    Screen * screen;
-    LCDControlAndStat *lcdControlAndStat;
+    Memory *memory;
+    Screen *screen;
+    LCDRegs *lcdRegs;
     InterruptFlags *interruptFlags;
 
     void drawBackgroundPixels(int, uint8_t *);
@@ -23,7 +23,7 @@ private:
     uint8_t *decodeBackgroundPalette();
 
 public:
-    PPU(Memory *, LCDControlAndStat *, InterruptFlags *, Screen *);
+    PPU(Memory *, LCDRegs *, InterruptFlags *, Screen *);
     ~PPU();
 
     int run();

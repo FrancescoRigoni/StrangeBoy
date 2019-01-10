@@ -29,7 +29,7 @@
 #define STAT_INTERRUPT_SELECTION_MODE_HBLANK_BIT            3
 #define STAT_LYC_LY_COINCIDENCE_BIT                         2
 
-class LCDControlAndStat : public IoDevice {
+class LCDRegs : public IoDevice {
 private:
     uint8_t lcdc;
     uint8_t stat;
