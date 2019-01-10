@@ -28,8 +28,7 @@ private:
     uint16_t regHL;
 
     bool interruptMasterEnable = true;
-
-    long cycles = 0;
+    long cyclesToSpend = 0;
 
     Memory *memory;
     InterruptFlags *interruptFlags;
@@ -76,7 +75,6 @@ public:
 
     Cpu(Memory *, InterruptFlags *);
 
-    void dumpStatus();
 	void cycle(int numberOfCycles);
     void execute();
 };

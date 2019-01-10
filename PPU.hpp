@@ -24,7 +24,6 @@ private:
 
 public:
     PPU(Memory *, LCDRegs *, InterruptFlags *, Screen *);
-    ~PPU();
 
     int run();
     void nextState();

@@ -7,6 +7,17 @@
 
 using namespace std;
 
+#ifdef TRACE_CPU_ON
+#define DUMP_CPU_STATUS() { \
+    TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC())); \
+    TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH())); \
+    TRACE_CPU(" F: " << cout8Hex(regF()) << " L: " << cout8Hex(regL()) << " AF: " << cout16Hex(regAF)); \
+    TRACE_CPU(" BC: " << cout16Hex(regBC) << " DE: " << cout16Hex(regDE) << " HL: " << cout16Hex(regHL) << "] "); \
+} 
+#else
+#define DUMP_CPU_STATUS() {}
+#endif
+
 Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags) {
     this->memory = memory;
     this->interruptFlags = interruptFlags;
@@ -46,8 +57,8 @@ uint16_t Cpu::imm16() {
     return memory->read16(regPC-2);
 }
 
-#define USE_CYCLES(n) {     \
-    cycles -= n;            \
+#define USE_CYCLES(n) {                    \
+    cyclesToSpend -= n;                    \
 }
 
 #define OPCODE_NOP() {                     \
@@ -741,13 +752,6 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
-void Cpu::dumpStatus() {
-    TRACE_CPU("[A: " << cout8Hex(regA()) << " B: " << cout8Hex(regB()) << " C: " << cout8Hex(regC()));
-    TRACE_CPU(" D: " << cout8Hex(regD()) << " E: " << cout8Hex(regE()) << " H: " << cout8Hex(regH()));
-    TRACE_CPU(" F: " << cout8Hex(regF()) << " L: " << cout8Hex(regL()) << " AF: " << cout16Hex(regAF));
-    TRACE_CPU(" BC: " << cout16Hex(regBC) << " DE: " << cout16Hex(regDE) << " HL: " << cout16Hex(regHL) << "] ");
-}
-
 void Cpu::acknowledgeInterrupts() {
     if (interruptFlags->acknowledgeVBlankInterrupt()) {
         interruptMasterEnable = false;
@@ -774,15 +778,15 @@ void Cpu::cycle(int numberOfCycles) {
         acknowledgeInterrupts();
     }
 
-    cycles = numberOfCycles;
+    cyclesToSpend = numberOfCycles;
     do {
         execute();
-    } while (cycles > 0);
+    } while (cyclesToSpend > 0);
 }
 
 void Cpu::execute() {
-    uint8_t opcode = memory->read8(regPC++);
-    dumpStatus();
+    uint8_t opcode = memory->read8(regPC++); 
+    DUMP_CPU_STATUS(); 
     TRACE_CPU(cout16Hex(regPC-1) << "  :  " << cout8Hex(opcode));
 
     switch (opcode) {
@@ -1792,8 +1796,6 @@ void Cpu::execute() {
             case 0x0D: OPCODE_RRC_REG_8_BIT(L);
             // RRC (HL)
             case 0x0E: OPCODE_RRC_REGPTR_8_BIT(HL);
-
-
 
             default:
                 unimplemented = true;

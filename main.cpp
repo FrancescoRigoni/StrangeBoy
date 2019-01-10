@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <algorithm>
 
 #include "Io.hpp"
 #include "Memory.hpp"
@@ -16,6 +17,7 @@
 #include "LogUtil.hpp"
 
 using namespace std;
+using namespace std::chrono;
 
 uint8_t *readRom(const char *);
 void runGameBoy(Screen *, atomic<bool> *);
@@ -62,26 +64,34 @@ void runGameBoy(Screen *screen, atomic<bool> *exit) {
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
-    double ppuUpdateFrequencyHz = 60.0;
-    int totalNumerOfRows = 154;
-    double rowDrawFrequencyHz = ppuUpdateFrequencyHz * totalNumerOfRows;
-    double mainLoopPeriodUs = (1000.0 / rowDrawFrequencyHz)*1000;
-
-    double cpuClockSpeedMhz = 4.194304;
-    double oneCyclePeriodUs = 1 / cpuClockSpeedMhz;
+    int fpsFrequency = 240;
+    int msRefreshPeriod = 1000 / fpsFrequency;
 
     do {
-        //for (int i = 0; i < (456/8); i++) {
+        // Draw a frame
+        milliseconds msAtFrameStart = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+
+        do {
             int cycles = ppu.run();
             dma.cycle(cycles);
             cpu.cycle(cycles);
             ppu.nextState();
-        ///}
+        } while (lcdRegs.read8(LY) != 0);
 
-        //double toSleepUs = oneCyclePeriodUs * cycles;
-        //this_thread::sleep_for(chrono::microseconds((int)toSleepUs));
+        milliseconds msAtFrameEnd = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+        milliseconds msTakenByDrawingFrame = msAtFrameEnd - msAtFrameStart;
+        int msToSleep = max(0, msRefreshPeriod - (int)msTakenByDrawingFrame.count());
+        //cout << "Frame took " << msTakenByDrawingFrame.count() << " ms, sleeping for " << msToSleep << " ms" << endl;
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(msToSleep));
+
+        cout << "GB thread running" << endl;
+        
     } while (!cpu.unimplemented && !exit->load());
+
+    cout << "GB thread terminating" << endl;
+
+    return;
 }
 
 uint8_t *readRom(const char *fileName) {

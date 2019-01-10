@@ -81,7 +81,7 @@ void Screen::pushLine(uint8_t *pixels) {
         tooManyLinesCondition.wait(lock);
     }
 
-    //cout << "Pushing line, total " << (int16_t)linesQueue.size() << endl;
+    // cout << "Pushing line, total " << (int16_t)linesQueue.size() << endl;
 
     linesQueue.push(pixels);
     zeroLinesCondition.notify_one();
@@ -101,6 +101,6 @@ uint8_t *Screen::popLine() {
         tooManyLinesCondition.notify_one();
     }
 
-    //cout << "Popped line, total " << (int16_t)linesQueue.size() << endl;
+    // cout << "Popped line, total " << (int16_t)linesQueue.size() << endl;
     return nextLine;
 }

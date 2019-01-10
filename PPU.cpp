@@ -12,10 +12,10 @@
 #define BACKGROUND_TILE_MAP_ROW_SIZE_BYTES           32
 #define SCREEN_HEIGHT_INCLUDING_VBLANK              154
 
-#define CLOCK_TICKS_LINE_DURING_VBLANK      456
-#define CLOCK_TICKS_DURING_OAM_SEARCH        84
-#define CLOCK_TICKS_DURING_LINE_DRAW        176
-#define CLOCK_TICKS_DURING_HBLANK           208
+#define CLOCK_TICKS_LINE_DURING_VBLANK              456
+#define CLOCK_TICKS_DURING_OAM_SEARCH                84
+#define CLOCK_TICKS_DURING_LINE_DRAW                176
+#define CLOCK_TICKS_DURING_HBLANK                   208
 
 
 PPU::PPU(Memory *memory, 
@@ -28,12 +28,9 @@ PPU::PPU(Memory *memory,
     this->interruptFlags = interruptFlags;
     this->screen = screen;
 
-    lcdRegs->stateVBlank();
-    lcdRegs->write8(LY, SCREEN_HEIGHT_INCLUDING_VBLANK-1);
-}
-
-PPU::~PPU() {
-    delete screen;
+    // Initial PPU state
+    lcdRegs->stateOAMSearch();
+    lcdRegs->write8(LY, 0);
 }
 
 int PPU::run() {
@@ -208,7 +205,9 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         }
     }
 
-    if (spritesEntriesForLine.size() > 0) cout << "Line: " << line << " has sprites: " << spritesEntriesForLine.size() << endl;
+    if (spritesEntriesForLine.size() > 0) {
+        cout << "Line: " << line << " has sprites: " << spritesEntriesForLine.size() << endl;
+    }
 
 }
 
