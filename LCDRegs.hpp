@@ -59,6 +59,8 @@ public:
     bool isBackgroundOn();
     bool isWindowOn();
     bool isSpritesOn();
+
+    int spriteHeightPx();
 };
 
 #endif

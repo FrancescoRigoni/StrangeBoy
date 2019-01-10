@@ -56,11 +56,11 @@ uint16_t Cpu::imm16() {
     break;                                 \
 }
 
-#define OPCODE_DI() {                                       \
-    TRACE_CPU(OPCODE_PFX << "DI");                          \
-    interruptMasterEnable = false;                          \
-    USE_CYCLES(4);                                          \
-    break;                                                  \
+#define OPCODE_DI() {                      \
+    TRACE_CPU(OPCODE_PFX << "DI");         \
+    interruptMasterEnable = false;         \
+    USE_CYCLES(4);                         \
+    break;                                 \
 }
 
 #define OPCODE_EI() {                     \
@@ -87,25 +87,26 @@ uint16_t Cpu::imm16() {
     break;                                                      \
 }
 
+#define OPCODE_DEC_8_BIT_FLAGS(result) {                                 \
+    setOrClearFlag(FLAG_ZERO, result == 0);                              \
+    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(result) == 0xF);         \
+    setFlag(FLAG_SUBTRACT);                                              \
+}
+
 #define OPCODE_DEC_REG_8_BIT(REG) {                                      \
     TRACE_CPU(OPCODE_PFX << "DEC " << #REG);                             \
     setReg##REG(reg##REG()-1);                                           \
-    setOrClearFlag(FLAG_ZERO, reg##REG() == 0);                          \
-    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(reg##REG()) == 0xF);     \
-    setFlag(FLAG_SUBTRACT);                                              \
+    OPCODE_DEC_8_BIT_FLAGS(reg##REG());                                  \
     USE_CYCLES(4);                                                       \
     break;                                                               \
 }
 
-// TODO split flag logic, reuse from OPCODE_DEC_REG_8_BIT
 #define OPCODE_DEC_REGPTR_8_BIT(REGPTR) {                                \
     TRACE_CPU(OPCODE_PFX << "DEC (" << #REGPTR << ")");                  \
     uint8_t arg = memory->read8(reg##REGPTR);                            \
     arg = arg - 1;                                                       \
     memory->write8(reg##REGPTR, arg);                                    \
-    setOrClearFlag(FLAG_ZERO, arg == 0);                                 \
-    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(arg) == 0xF);            \
-    setFlag(FLAG_SUBTRACT);                                              \
+    OPCODE_DEC_8_BIT_FLAGS(arg);                                         \
     USE_CYCLES(12);                                                      \
     break;                                                               \
 }
@@ -654,6 +655,31 @@ uint16_t Cpu::imm16() {
     uint8_t after = before >> 1;                                                      \
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_SRL_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
+#define OPCODE_RLC_8_BIT_FLAGS(before, after) {                                       \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 7));                                  \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+}
+#define OPCODE_RLC_REG_8_BIT(REG) {                                                   \
+    TRACE_CPU(OPCODE_CB_PFX << "RLC " << #REG);                                       \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = before << 1;                                                      \
+    setReg##REG(after);                                                               \
+    OPCODE_RLC_8_BIT_FLAGS(before, after);                                            \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_RLC_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_CB_PFX << "RLC (" << #REGPTR << ")");                            \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = before << 1;                                                      \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_RLC_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(16);                                                                   \
     break;                                                                            \
 }
@@ -1661,6 +1687,23 @@ void Cpu::execute() {
             case 0x3D: OPCODE_SRL_REG_8_BIT(L);
             // SRL (HL)
             case 0x3E: OPCODE_SRL_REGPTR_8_BIT(HL);
+            // RLC A
+            case 0x07: OPCODE_RLC_REG_8_BIT(A);
+            // RLC B
+            case 0x00: OPCODE_RLC_REG_8_BIT(B);
+            // RLC C
+            case 0x01: OPCODE_RLC_REG_8_BIT(C);
+            // RLC D
+            case 0x02: OPCODE_RLC_REG_8_BIT(D);
+            // RLC E
+            case 0x03: OPCODE_RLC_REG_8_BIT(E);
+            // RLC H
+            case 0x04: OPCODE_RLC_REG_8_BIT(H);
+            // RLC L
+            case 0x05: OPCODE_RLC_REG_8_BIT(L);
+            // RLC (HL)
+            case 0x06: OPCODE_RLC_REGPTR_8_BIT(HL);
+
 
             default:
                 unimplemented = true;

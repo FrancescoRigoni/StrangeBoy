@@ -59,6 +59,8 @@ public:
 	void write8(uint16_t address, uint8_t value, bool trace = true);
 
     bool bootRomEnabled();
+
+    void *getRawPointer(uint16_t address);
 };
 
 #endif
