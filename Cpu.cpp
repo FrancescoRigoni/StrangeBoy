@@ -311,6 +311,8 @@ uint16_t Cpu::imm16() {
 #define OPCODE_RL_8_BIT_FLAGS(BEFORE, AFTER) {                                        \
     setOrClearFlag(FLAG_CARRY, isBitSet(BEFORE, 7));                                  \
     setOrClearFlag(FLAG_ZERO, AFTER == 0);                                            \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
 }
 
 // Rotate left through carry (unlike RLC)
@@ -332,6 +334,36 @@ uint16_t Cpu::imm16() {
     USE_CYCLES(16);                                                                   \
     break;                                                                            \
 }
+
+#define OPCODE_RR_8_BIT_FLAGS(before, after) {                                        \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 0));                                  \
+    setOrClearFlag(FLAG_ZERO, after == 0);                                            \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
+}
+// Rotate right through carry
+#define OPCODE_RR_REG_8_BIT(REG) {                                                    \
+    TRACE_CPU(OPCODE_CB_PFX << "RR " << #REG);                                        \
+    uint8_t carryMask = flag(FLAG_CARRY) ? 0b10000000 : 0b00000000;                   \
+    uint8_t before = reg##REG();                                                      \
+    uint8_t after = (before >> 1) | carryMask;                                        \
+    setReg##REG(after);                                                               \
+    OPCODE_RR_8_BIT_FLAGS(before, after);                                             \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+// Rotate right through carry
+#define OPCODE_RR_REGPTR_8_BIT(REGPTR) {                                              \
+    TRACE_CPU(OPCODE_CB_PFX << "RR (" << #REGPTR << ")");                             \
+    uint8_t carryMask = flag(FLAG_CARRY) ? 0b10000000 : 0b00000000;                   \
+    uint8_t before = memory->read8(reg##REGPTR);                                      \
+    uint8_t after = (before >> 1) | carryMask;                                        \
+    memory->write8(reg##REGPTR, after);                                               \
+    OPCODE_RR_8_BIT_FLAGS(before, after);                                             \
+    USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+
 // Rotate A right through carry (unlike RLC), some docs says always clear
 // zero flag, some others only clear if result is zero.
 #define OPCODE_RRA() {                                                                \
@@ -1392,6 +1424,22 @@ void Cpu::execute() {
             case 0x15: OPCODE_RL_REG_8_BIT(L);
             // RL (HL)
             case 0x16: OPCODE_RL_REGPTR_8_BIT(HL);
+            // RR A
+            case 0x1F: OPCODE_RR_REG_8_BIT(A);
+            // RR B
+            case 0x18: OPCODE_RR_REG_8_BIT(B);
+            // RR C
+            case 0x19: OPCODE_RR_REG_8_BIT(C);
+            // RR D
+            case 0x1A: OPCODE_RR_REG_8_BIT(D);
+            // RR E
+            case 0x1B: OPCODE_RR_REG_8_BIT(E);
+            // RR H
+            case 0x1C: OPCODE_RR_REG_8_BIT(H);
+            // RR L
+            case 0x1D: OPCODE_RR_REG_8_BIT(L);
+            // RR (HL)
+            case 0x1E: OPCODE_RR_REGPTR_8_BIT(HL);
             // SWAP A
             case 0x37: OPCODE_SWAP_REG_8_BIT(A);
             // SWAP B
