@@ -21,6 +21,8 @@ private:
     void doDrawLine();
 
     uint8_t *decodeBackgroundPalette();
+    uint8_t *decodeSpritePalette0();
+    uint8_t *decodeSpritePalette1();
 
 public:
     PPU(Memory *, LCDRegs *, InterruptFlags *, Screen *);

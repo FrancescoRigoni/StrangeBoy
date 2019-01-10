@@ -2,7 +2,10 @@
 #include "LCDRegs.hpp"
 #include "ByteUtil.hpp"
 
-#define BACKGROUND_TILE_SIZE_BYTES 16
+#define BACKGROUND_TILE_SIZE_BYTES              16
+#define SPRITE_ATTRIBUTE_TABLE_START        0xFE00
+#define SPRITE_ATTRIBUTE_TABLE_SIZE         0x00A0
+#define SPRITE_PATTERN_TABLE_START          0x8000
 
 void LCDRegs::stateOAMSearch() {
     stat &= 0b11111100;
@@ -79,6 +82,15 @@ uint16_t LCDRegs::addressForBackgroundTile(uint8_t tileNumber) {
 
 uint16_t LCDRegs::addressForBackgroundTilesMap() {
     return isBitSet(lcdc, LCDC_BG_TILE_MAP_DISPLAY_SELECT_BIT) ? 0x9C00 : 0x9800;
+}
+
+uint16_t LCDRegs::addressForSprite(uint8_t spriteNumber) {
+    uint16_t spriteOffset = spriteNumber*(spriteHeightPx()*2);
+    return SPRITE_PATTERN_TABLE_START + spriteOffset;
+}
+
+uint16_t LCDRegs::addressForSpriteAttributeTable() {
+    return SPRITE_ATTRIBUTE_TABLE_START;
 }
 
 bool LCDRegs::isScreenOn() {

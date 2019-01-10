@@ -85,8 +85,6 @@ void runGameBoy(Screen *screen, atomic<bool> *exit) {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(msToSleep));
 
-        cout << "GB thread running" << endl;
-        
     } while (!cpu.unimplemented && !exit->load());
 
     cout << "GB thread terminating" << endl;

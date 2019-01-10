@@ -12,6 +12,8 @@
 #define BACKGROUND_TILE_MAP_ROW_SIZE_BYTES           32
 #define SCREEN_HEIGHT_INCLUDING_VBLANK              154
 
+#define SPRITE_WIDTH_PX                               8
+
 #define CLOCK_TICKS_LINE_DURING_VBLANK              456
 #define CLOCK_TICKS_DURING_OAM_SEARCH                84
 #define CLOCK_TICKS_DURING_LINE_DRAW                176
@@ -168,10 +170,22 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
 
         pixels[x] = backgroundPalette[color];
     }
+
+    delete[] backgroundPalette;
 }
 
 void PPU::drawWindowPixels(int line, uint8_t *pixels) {
     TRACE_PPU("Window enabled" << endl);
+}
+
+uint8_t *PPU::decodeBackgroundPalette() {
+    uint8_t *backgroundPalette = new uint8_t[4];
+    uint8_t backgroundPaletteByte = memory->read8(BGP);
+    backgroundPalette[0] = backgroundPaletteByte & 0b00000011;
+    backgroundPalette[1] = (backgroundPaletteByte & 0b00001100) >> 2;
+    backgroundPalette[2] = (backgroundPaletteByte & 0b00110000) >> 4;
+    backgroundPalette[3] = (backgroundPaletteByte & 0b11000000) >> 6;
+    return backgroundPalette;
 }
 
 typedef struct {
@@ -181,11 +195,8 @@ typedef struct {
     uint8_t flags;
 } SpriteAttributeEntry;
 
-#define SPRITE_ATTRIBUTE_TABLE_START        0xFE00
-#define SPRITE_ATTRIBUTE_TABLE_SIZE         0x00A0
-#define SPRITE_PATTERN_TABLE_START          0x8000
-#define MAX_SPRITES_PER_LINE                    10
 
+#define MAX_SPRITES_PER_LINE                    10
 #define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - 8
 #define SPRITE_SCREEN_Y(spriteYFromAttrTable) spriteYFromAttrTable - 16
 
@@ -207,16 +218,55 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
 
     if (spritesEntriesForLine.size() > 0) {
         cout << "Line: " << line << " has sprites: " << spritesEntriesForLine.size() << endl;
+        for (auto spriteAttributes : spritesEntriesForLine) {
+            cout << "    X: " << (int)SPRITE_SCREEN_X(spriteAttributes->xPos) << " Y: " << (int)SPRITE_SCREEN_Y(spriteAttributes->yPos) << endl;
+        }
     }
 
+    for (auto spriteAttributes : spritesEntriesForLine) {
+        uint8_t *palette;
+        if (isBitSet(spriteAttributes->flags), 4) palette = decodeSpritePalette1();
+        else decodeSpritePalette0();
+               
+        uint16_t spriteData = lcdRegs->addressForSprite(spriteAttributes->patternNumber);
+        int yInSprite = line - SPRITE_SCREEN_Y(entry->yPos);
+
+        for (int x = 0; x < SPRITE_WIDTH_PX; x++) {
+            
+        }
+
+        uint16_t yOffsetInTile = yInTile*2;                      // Two bytes per row
+        uint8_t xBitInTileBytes = (7-xInTile);                   // msb is first pixel, lsb is last pixel
+
+        uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
+        uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
+
+        uint8_t mask = 1 << xBitInTileBytes;
+        uint8_t msbc = ((msb & mask) >> xBitInTileBytes) << 1;
+        uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
+        uint8_t color = msbc | lsbc;
+
+
+        delete[] palette;
+    }
 }
 
-uint8_t *PPU::decodeBackgroundPalette() {
-    uint8_t *backgroundPalette = new uint8_t[4];
-    uint8_t backgroundPaletteByte = memory->read8(BGP);
-    backgroundPalette[0] = backgroundPaletteByte & 0b00000011;
-    backgroundPalette[1] = (backgroundPaletteByte & 0b00001100) >> 2;
-    backgroundPalette[2] = (backgroundPaletteByte & 0b00110000) >> 4;
-    backgroundPalette[3] = (backgroundPaletteByte & 0b11000000) >> 6;
-    return backgroundPalette;
+uint8_t *PPU::decodeSpritePalette0() {
+    uint8_t *palette = new uint8_t[4];
+    uint8_t paletteByte = memory->read8(OBJ_PAL_0);
+    paletteByte[0] = paletteByte & 0b00000011;
+    paletteByte[1] = (paletteByte & 0b00001100) >> 2;
+    paletteByte[2] = (paletteByte & 0b00110000) >> 4;
+    paletteByte[3] = (paletteByte & 0b11000000) >> 6;
+    return palette;
+}
+
+uint8_t *PPU::decodeSpritePalette1() {
+    uint8_t *palette = new uint8_t[4];
+    uint8_t paletteByte = memory->read8(OBJ_PAL_1);
+    paletteByte[0] = paletteByte & 0b00000011;
+    paletteByte[1] = (paletteByte & 0b00001100) >> 2;
+    paletteByte[2] = (paletteByte & 0b00110000) >> 4;
+    paletteByte[3] = (paletteByte & 0b11000000) >> 6;
+    return palette;
 }
