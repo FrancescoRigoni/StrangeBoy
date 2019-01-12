@@ -3,9 +3,6 @@
 #include "ByteUtil.hpp"
 
 #define BACKGROUND_TILE_SIZE_BYTES              16
-#define SPRITE_ATTRIBUTE_TABLE_START        0xFE00
-#define SPRITE_ATTRIBUTE_TABLE_SIZE         0x00A0
-#define SPRITE_PATTERN_TABLE_START          0x8000
 
 void LCDRegs::stateOAMSearch() {
     stat &= 0b11111100;

@@ -101,7 +101,7 @@ void PPU::nextState() {
             if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_VBLANK_BIT)) {
                 interruptFlags->interruptLCDC();
             }
-        }
+        } // else keep incrementing line until it wraps back to zero
     }
 }
 
@@ -138,7 +138,7 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
     uint8_t scrollY = lcdRegs->read8(SCY);
     uint16_t scrolledLine = line + scrollY;
 
-    uint8_t *backgroundPalette = decodeBackgroundPalette();
+    uint8_t *backgroundPalette = decodePaletteByte(BGP);
 
     // Go on drawing the tiles pixels for this line
     int rowInTilesMap = scrolledLine/BACKGROUND_TILE_HEIGHT_PX;
@@ -178,16 +178,6 @@ void PPU::drawWindowPixels(int line, uint8_t *pixels) {
     TRACE_PPU("Window enabled" << endl);
 }
 
-uint8_t *PPU::decodeBackgroundPalette() {
-    uint8_t *backgroundPalette = new uint8_t[4];
-    uint8_t backgroundPaletteByte = memory->read8(BGP);
-    backgroundPalette[0] = backgroundPaletteByte & 0b00000011;
-    backgroundPalette[1] = (backgroundPaletteByte & 0b00001100) >> 2;
-    backgroundPalette[2] = (backgroundPaletteByte & 0b00110000) >> 4;
-    backgroundPalette[3] = (backgroundPaletteByte & 0b11000000) >> 6;
-    return backgroundPalette;
-}
-
 typedef struct {
     uint8_t yPos;
     uint8_t xPos;
@@ -195,78 +185,85 @@ typedef struct {
     uint8_t flags;
 } SpriteAttributeEntry;
 
-
-#define MAX_SPRITES_PER_LINE                    10
-#define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - 8
+#define MAX_SPRITES_PER_LINE                  10
+#define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - SPRITE_WIDTH_PX
 #define SPRITE_SCREEN_Y(spriteYFromAttrTable) spriteYFromAttrTable - 16
 
+#define SPRITE_ATTRIBUTE_PALETTE_BIT 4
+
 void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
-    int spriteHeightPx = lcdRegs->spriteHeightPx();
     vector<SpriteAttributeEntry *> spritesEntriesForLine;
 
+    // Find which sprites fall on this line
     for (uint16_t spriteAttribute = SPRITE_ATTRIBUTE_TABLE_START; 
         spriteAttribute < (SPRITE_ATTRIBUTE_TABLE_START + SPRITE_ATTRIBUTE_TABLE_SIZE);
         spriteAttribute += sizeof(SpriteAttributeEntry)) {
 
+        if (spritesEntriesForLine.size() == MAX_SPRITES_PER_LINE) {
+            // Stop looking for sprites, we have enough.
+            break;
+        }
+
         SpriteAttributeEntry *entry = (SpriteAttributeEntry*) memory->getRawPointer(spriteAttribute);
-        if (entry->yPos != 0 &&
-            SPRITE_SCREEN_Y(entry->yPos) - line < spriteHeightPx && 
-            spritesEntriesForLine.size() < MAX_SPRITES_PER_LINE) {
+        int spriteYStartOnScreen = SPRITE_SCREEN_Y(entry->yPos);
+        int spriteYEndOnScreen = spriteYStartOnScreen + lcdRegs->spriteHeightPx();
+        int lineIsInSpriteYRange = line >= spriteYStartOnScreen && line < spriteYEndOnScreen;
+
+        if (lineIsInSpriteYRange) {
             spritesEntriesForLine.push_back(entry);
         }
     }
 
-    if (spritesEntriesForLine.size() > 0) {
-        cout << "Line: " << line << " has sprites: " << spritesEntriesForLine.size() << endl;
-        for (auto spriteAttributes : spritesEntriesForLine) {
-            cout << "    X: " << (int)SPRITE_SCREEN_X(spriteAttributes->xPos) << " Y: " << (int)SPRITE_SCREEN_Y(spriteAttributes->yPos) << endl;
-        }
-    }
-
     for (auto spriteAttributes : spritesEntriesForLine) {
+        if (SPRITE_SCREEN_X(spriteAttributes->xPos) == 0 || 
+            SPRITE_SCREEN_X(spriteAttributes->xPos) >= SCREEN_WIDTH_PX) {
+            // TODO: According to the gameboy manual sprites on this line that fall 
+            // outside of the screen can still affect the way other sprites on this 
+            // line are drawn.
+            continue;
+        }
+
         uint8_t *palette;
-        if (isBitSet(spriteAttributes->flags), 4) palette = decodeSpritePalette1();
-        else decodeSpritePalette0();
+        if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_PALETTE_BIT)) palette = decodePaletteByte(OBJ_PAL_1);
+        else palette = decodePaletteByte(OBJ_PAL_0);
                
         uint16_t spriteData = lcdRegs->addressForSprite(spriteAttributes->patternNumber);
-        int yInSprite = line - SPRITE_SCREEN_Y(entry->yPos);
+        uint8_t lineInSpriteData = spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line;
+        uint16_t addressOfLineInSpriteData = spriteData + (lineInSpriteData*2);
+        uint8_t lsb = memory->read8(addressOfLineInSpriteData, false);
+        uint8_t msb = memory->read8(addressOfLineInSpriteData+1, false);
 
-        for (int x = 0; x < SPRITE_WIDTH_PX; x++) {
-            
+        int pixelPositionInLine = SPRITE_SCREEN_X(spriteAttributes->xPos);
+        for (int i = 7; i >= 0; i--) {
+            if (pixelPositionInLine < 0) {
+                // Sprite begins off the screen, do not draw these pixels
+                continue;
+            }
+
+            uint8_t mask = 1 << i;
+            uint8_t msbc = ((msb & mask) >> i) << 1;
+            uint8_t lsbc = (lsb & mask) >> i;
+            uint8_t color = msbc | lsbc;
+
+            // TODO: Handle transparent color
+            pixels[pixelPositionInLine] = palette[color];
+
+            if (++pixelPositionInLine > SCREEN_WIDTH_PX) {
+                // Sprite goes off the screen, stop drawing it
+                break;
+            }
         }
-
-        uint16_t yOffsetInTile = yInTile*2;                      // Two bytes per row
-        uint8_t xBitInTileBytes = (7-xInTile);                   // msb is first pixel, lsb is last pixel
-
-        uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
-        uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
-
-        uint8_t mask = 1 << xBitInTileBytes;
-        uint8_t msbc = ((msb & mask) >> xBitInTileBytes) << 1;
-        uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
-        uint8_t color = msbc | lsbc;
-
-
+        
         delete[] palette;
     }
 }
 
-uint8_t *PPU::decodeSpritePalette0() {
+uint8_t *PPU::decodePaletteByte(uint16_t address) {
     uint8_t *palette = new uint8_t[4];
-    uint8_t paletteByte = memory->read8(OBJ_PAL_0);
-    paletteByte[0] = paletteByte & 0b00000011;
-    paletteByte[1] = (paletteByte & 0b00001100) >> 2;
-    paletteByte[2] = (paletteByte & 0b00110000) >> 4;
-    paletteByte[3] = (paletteByte & 0b11000000) >> 6;
-    return palette;
-}
-
-uint8_t *PPU::decodeSpritePalette1() {
-    uint8_t *palette = new uint8_t[4];
-    uint8_t paletteByte = memory->read8(OBJ_PAL_1);
-    paletteByte[0] = paletteByte & 0b00000011;
-    paletteByte[1] = (paletteByte & 0b00001100) >> 2;
-    paletteByte[2] = (paletteByte & 0b00110000) >> 4;
-    paletteByte[3] = (paletteByte & 0b11000000) >> 6;
+    uint8_t paletteByte = memory->read8(address);
+    palette[0] = paletteByte & 0b00000011;
+    palette[1] = (paletteByte & 0b00001100) >> 2;
+    palette[2] = (paletteByte & 0b00110000) >> 4;
+    palette[3] = (paletteByte & 0b11000000) >> 6;
     return palette;
 }

@@ -29,6 +29,10 @@
 #define STAT_INTERRUPT_SELECTION_MODE_HBLANK_BIT            3
 #define STAT_LYC_LY_COINCIDENCE_BIT                         2
 
+#define SPRITE_ATTRIBUTE_TABLE_START        0xFE00
+#define SPRITE_ATTRIBUTE_TABLE_SIZE         0x00A0
+#define SPRITE_PATTERN_TABLE_START          0x8000
+
 class LCDRegs : public IoDevice {
 private:
     uint8_t lcdc;

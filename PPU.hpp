@@ -20,9 +20,7 @@ private:
     void drawSpritesPixels(int, uint8_t *);
     void doDrawLine();
 
-    uint8_t *decodeBackgroundPalette();
-    uint8_t *decodeSpritePalette0();
-    uint8_t *decodeSpritePalette1();
+    uint8_t *decodePaletteByte(uint16_t);
 
 public:
     PPU(Memory *, LCDRegs *, InterruptFlags *, Screen *);
