@@ -1,9 +1,12 @@
 
-#include "Screen.hpp"
 #include <iostream>
+#include "Screen/Screen.hpp"
+#include "Util/LogUtil.hpp"
 
 #define SCREEN_HEIGHT_PX                            144
 #define SCREEN_WIDTH_PX                             160
+
+#define TOO_MANY_LINES_QUEUED          SCREEN_HEIGHT_PX
 
 Screen::Screen(Joypad *joypad) {
     this->joypad = joypad;
@@ -35,7 +38,6 @@ void Screen::run() {
                 isquit = true;
             } else if (event.type == SDL_KEYDOWN) {
                 if(event.key.keysym.sym == SDLK_a) {
-                    cout << "Button A pressed" << endl;
                     joypad->buttonA = true;
                 } else if(event.key.keysym.sym == SDLK_z) {
                     joypad->buttonB = true;
@@ -82,6 +84,7 @@ void Screen::run() {
 
 void Screen::drawNextLine() {
     uint8_t *pixels = popLine();
+    if (pixels == 0) return;
 
     SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
 
@@ -100,13 +103,8 @@ void Screen::drawNextLine() {
 
     }
 
-    // if (currentScanLine%8 == 0) {
-    //     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    //     SDL_RenderDrawLine(renderer, 0, currentScanLine*2, 320, currentScanLine*2);
-    // }
-
     currentScanLine++;
-    currentScanLine %= 144;
+    currentScanLine %= SCREEN_HEIGHT_PX;
 
     if (currentScanLine == 0) {
         SDL_RenderPresent(renderer);
@@ -118,11 +116,9 @@ void Screen::drawNextLine() {
 void Screen::pushLine(uint8_t *pixels) {
     unique_lock<mutex> lock(linesMutex);
 
-    if (linesQueue.size() > 144) {
-        tooManyLinesCondition.wait(lock);
+    if (linesQueue.size() >= TOO_MANY_LINES_QUEUED) {
+        TRACE_SCREEN("Warning, too many lines queued for screen, total " << (int16_t)linesQueue.size() << endl);
     }
-
-    // cout << "Pushing line, total " << (int16_t)linesQueue.size() << endl;
 
     linesQueue.push(pixels);
     zeroLinesCondition.notify_one();
@@ -132,16 +128,10 @@ uint8_t *Screen::popLine() {
     unique_lock<mutex> lock(linesMutex);
 
     if (linesQueue.size() == 0) {
-        zeroLinesCondition.wait(lock);
+        return 0;
     }
 
     uint8_t *nextLine = linesQueue.front();
     linesQueue.pop();
-
-    if (linesQueue.size() == (144/2)) {
-        tooManyLinesCondition.notify_one();
-    }
-
-    // cout << "Popped line, total " << (int16_t)linesQueue.size() << endl;
     return nextLine;
 }

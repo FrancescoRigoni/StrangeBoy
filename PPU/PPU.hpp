@@ -1,10 +1,10 @@
 
-#include "Io.hpp"
-#include "Memory.hpp"
-#include "ByteUtil.hpp"
-#include "Screen.hpp"
-#include "LCDRegs.hpp"
-#include "InterruptFlags.hpp"
+#include "Devices/Io.hpp"
+#include "Cpu/Memory.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Screen/Screen.hpp"
+#include "Devices/LCDRegs.hpp"
+#include "Devices/InterruptFlags.hpp"
 
 #include <cstdint>
 

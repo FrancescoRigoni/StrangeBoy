@@ -4,9 +4,9 @@
 
 #include <cstdint>
 
-#include "Memory.hpp"
-#include "ByteUtil.hpp"
-#include "InterruptFlags.hpp"
+#include "Cpu/Memory.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Devices/InterruptFlags.hpp"
 
 #define PC_INITIAL 0x0000
 

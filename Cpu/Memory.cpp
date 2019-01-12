@@ -1,8 +1,9 @@
 
 #include <iostream>
-#include "Memory.hpp"
-#include "Io.hpp"
-#include "LogUtil.hpp"
+#include "Cpu/Memory.hpp"
+#include "Devices/Io.hpp"
+#include "Util/LogUtil.hpp"
+
 using namespace std;
 
 Memory::Memory(uint8_t *bootRom, uint8_t* gameRom) {

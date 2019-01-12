@@ -1,8 +1,8 @@
 
 #include <vector>
-#include "PPU.hpp"
-#include "LogUtil.hpp"
-#include "ByteUtil.hpp"
+#include "PPU/PPU.hpp"
+#include "Util/LogUtil.hpp"
+#include "Util/ByteUtil.hpp"
 
 #define SCREEN_HEIGHT_PX                            144
 #define SCREEN_WIDTH_PX                             160

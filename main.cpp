@@ -6,15 +6,16 @@
 #include <atomic>
 #include <algorithm>
 
-#include "Io.hpp"
-#include "Memory.hpp"
-#include "PPU.hpp"
-#include "Cpu.hpp"
-#include "Joypad.hpp"
-#include "Dma.hpp"
-#include "LCDRegs.hpp"
-#include "InterruptFlags.hpp"
-#include "LogUtil.hpp"
+#include "Devices/Io.hpp"
+#include "Cpu/Memory.hpp"
+#include "PPU/PPU.hpp"
+#include "Cpu/Cpu.hpp"
+#include "Devices/Joypad.hpp"
+#include "Devices/Dma.hpp"
+#include "Devices/LCDRegs.hpp"
+#include "Devices/InterruptFlags.hpp"
+#include "Util/LogUtil.hpp"
+#include "Screen/Screen.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -34,9 +35,14 @@ int main(int argc, char **argv) {
     gameboyThread.join();
 }
 
+unsigned long getTimeMilliseconds() {
+    return chrono::duration_cast<chrono::milliseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 void runGameBoy(Screen *screen, Joypad *joypad, atomic<bool> *exit) {
-    uint8_t *bootRom = readRom("bootrom.bin");
-    uint8_t *tetris = readRom("tetris.bin");
+    uint8_t *bootRom = readRom("roms/bootrom.bin");
+    uint8_t *tetris = readRom("roms/tetris.bin");
 
     Memory memory(bootRom, tetris);
     uint8_t cartType = memory.read16(0x0147);
@@ -64,12 +70,15 @@ void runGameBoy(Screen *screen, Joypad *joypad, atomic<bool> *exit) {
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
-    int fpsFrequency = 240;
-    int msRefreshPeriod = 1000 / fpsFrequency;
+    int fpsFrequency = 60*4;
+    unsigned long msRefreshPeriod = 1000 / fpsFrequency;
+
+    // Give some time to the screen window to display
+    this_thread::sleep_for(chrono::milliseconds(1000));
 
     do {
         // Draw a frame
-        milliseconds msAtFrameStart = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+        unsigned long timeAtStartOfFrame = getTimeMilliseconds();
 
         do {
             int cycles = ppu.run();
@@ -78,16 +87,12 @@ void runGameBoy(Screen *screen, Joypad *joypad, atomic<bool> *exit) {
             ppu.nextState();
         } while (lcdRegs.read8(LY) != 0);
 
-        milliseconds msAtFrameEnd = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-        milliseconds msTakenByDrawingFrame = msAtFrameEnd - msAtFrameStart;
-        int msToSleep = max(0, msRefreshPeriod - (int)msTakenByDrawingFrame.count());
-        //cout << "Frame took " << msTakenByDrawingFrame.count() << " ms, sleeping for " << msToSleep << " ms" << endl;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(msToSleep));
+        unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
+        int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;
+        int msToSleep = max(0, msStillToWaitForNextFrame);
+        this_thread::sleep_for(chrono::milliseconds(msToSleep));
 
     } while (!cpu.unimplemented && !exit->load());
-
-    cout << "GB thread terminating" << endl;
 
     return;
 }
@@ -97,7 +102,7 @@ uint8_t *readRom(const char *fileName) {
     rom.open(fileName, ios::in | ios::binary);
 
     if (!rom.is_open()) {
-        cout << "Unable to open file" << endl;
+        cout << "Unable to open file " << fileName << endl;
         exit(1);
     }
 

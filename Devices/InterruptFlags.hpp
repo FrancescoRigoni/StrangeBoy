@@ -2,9 +2,9 @@
 #define __INTERRUPT_FLAGS_H__
 
 #include <cstdint>
-#include "LogUtil.hpp"
-#include "ByteUtil.hpp"
-#include "IoDevice.hpp"
+#include "Util/LogUtil.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Devices/IoDevice.hpp"
 
 #define IF                    0xFF0F
 #define INTERRUPTS_ENABLE_REG 0xFFFF

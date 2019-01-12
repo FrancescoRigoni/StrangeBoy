@@ -1,6 +1,6 @@
 
-#include "Dma.hpp"
-#include "Memory.hpp"
+#include "Devices/Dma.hpp"
+#include "Cpu/Memory.hpp"
 
 Dma::Dma(Memory *memory) {
     this->memory = memory;

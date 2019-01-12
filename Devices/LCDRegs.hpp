@@ -3,9 +3,9 @@
 #define __LCDC_H__
 
 #include <cstdint>
-#include "LogUtil.hpp"
-#include "ByteUtil.hpp"
-#include "IoDevice.hpp"
+#include "Util/LogUtil.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Devices/IoDevice.hpp"
 
 #define LCDC                0xFF40 
 #define STAT                0xFF41

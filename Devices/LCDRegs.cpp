@@ -1,6 +1,6 @@
 
-#include "LCDRegs.hpp"
-#include "ByteUtil.hpp"
+#include "Devices/LCDRegs.hpp"
+#include "Util/ByteUtil.hpp"
 
 #define BACKGROUND_TILE_SIZE_BYTES              16
 

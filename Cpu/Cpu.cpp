@@ -1,9 +1,9 @@
 
 #include <iostream>
 
-#include "Cpu.hpp"
-#include "LogUtil.hpp"
-#include "Io.hpp"
+#include "Cpu/Cpu.hpp"
+#include "Util/LogUtil.hpp"
+#include "Devices/Io.hpp"
 
 using namespace std;
 

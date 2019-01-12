@@ -1,4 +1,7 @@
 
+#ifndef __SCREEN_H__
+#define __SCREEN_H__
+
 #include <cstdint>
 #include <SDL2/SDL.h>
 #include <queue>
@@ -6,7 +9,7 @@
 #include <condition_variable>
 #include <functional>
 
-#include "Joypad.hpp"
+#include "Devices/Joypad.hpp"
 
 using namespace std;
 
@@ -30,3 +33,5 @@ public:
     uint8_t *popLine();
     void run();
 };
+
+#endif

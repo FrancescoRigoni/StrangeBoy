@@ -3,10 +3,10 @@
 #define __DMA_H__
 
 #include <cstdint>
-#include "Memory.hpp"
-#include "LogUtil.hpp"
-#include "ByteUtil.hpp"
-#include "IoDevice.hpp"
+#include "Cpu/Memory.hpp"
+#include "Util/LogUtil.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Devices/IoDevice.hpp"
 
 #define DMA 0xFF46
 

@@ -18,9 +18,9 @@ include_directories(${SDL2_INCLUDE_DIR})
 # All warnings on
 set (CMAKE_CXX_FLAGS "-Wall ${CMAKE_CXX_FLAGS}")
 
-set (CMAKE_CXX_FLAGS "-I/usr/local/include ${CMAKE_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS "-I/usr/local/include -I. ${CMAKE_CXX_FLAGS}")
 
-file(GLOB sources *.cpp)
+file(GLOB sources *.cpp Cpu/*.cpp Memory/*.cpp Devices/*.cpp Util/*.cpp PPU/*.cpp Screen/*.cpp)
 
 add_executable(GameboyEmu ${sources})
 target_link_libraries(GameboyEmu ${SDL2_LIBRARY})

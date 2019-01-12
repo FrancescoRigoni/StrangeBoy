@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <atomic>
 
-#include "LogUtil.hpp"
-#include "ByteUtil.hpp"
-#include "IoDevice.hpp"
+#include "Util/LogUtil.hpp"
+#include "Util/ByteUtil.hpp"
+#include "Devices/IoDevice.hpp"
 
 #define P1 0xFF00
 

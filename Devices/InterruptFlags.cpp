@@ -1,5 +1,5 @@
 
-#include "InterruptFlags.hpp"
+#include "Devices/InterruptFlags.hpp"
 
 void InterruptFlags::write8(uint16_t address, uint8_t value) {
     if (address == IF) this->flags = value;

@@ -18,6 +18,7 @@ using namespace std;
 //#define TRACE_PPU_ON
 //#define TRACE_JOYPAD_ON
 //#define TRACE_DMA_ON
+//#define TRACE_SCREEN_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
@@ -25,7 +26,7 @@ using namespace std;
 //if (regPC >= 0x017e && regPC <= 0x020b) cout << expr;
 #ifdef TRACE_CPU_ON
     #define TRACE_CPU(expr) {                          \
-        if (/*!memory->bootRomEnabled()*/regPC >= 0x25d9 && regPC < 0x25f6) cout << expr;   \
+        if (!memory->bootRomEnabled()) cout << expr;   \
     }
 #else
     #define TRACE_CPU(expr) {}
@@ -71,6 +72,12 @@ using namespace std;
     #define TRACE_DMA(expr) cout << expr;
 #else
     #define TRACE_DMA(expr) {}
+#endif
+
+#ifdef TRACE_SCREEN_ON
+    #define TRACE_SCREEN(expr) cout << expr;
+#else
+    #define TRACE_SCREEN(expr) {}
 #endif
 
 #endif
