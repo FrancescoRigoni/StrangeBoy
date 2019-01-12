@@ -57,6 +57,11 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
         ioMap[address]->write8(address, value);
     }
 
+    if (address < VIDEO_RAM_START) {
+        // MBC still to do
+        return;
+    }
+
     traceEnabled = trace;
     reading = false;
     uint16_t decodedAddress = address;

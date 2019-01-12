@@ -3,6 +3,8 @@
 #define __JOYPAD_H__
 
 #include <cstdint>
+#include <atomic>
+
 #include "LogUtil.hpp"
 #include "ByteUtil.hpp"
 #include "IoDevice.hpp"
@@ -16,20 +18,22 @@
 #define JOYPAD_P11_BIT 1
 #define JOYPAD_P10_BIT 0      
 
+using namespace std;
+
 class Joypad : public IoDevice {
 private:
-    bool buttonRight = false;
-    bool buttonLeft = false;
-    bool buttonUp = false;
-    bool buttonDown = false;
-    bool buttonA = false;
-    bool buttonB = false;
-    bool buttonSelect = false;
-    bool buttonStart = false;
-   
     uint8_t pSelect;
 
 public:
+    atomic<bool> buttonRight{false};
+    atomic<bool> buttonLeft{false};
+    atomic<bool> buttonUp{false};
+    atomic<bool> buttonDown{false};
+    atomic<bool> buttonA{false};
+    atomic<bool> buttonB{false};
+    atomic<bool> buttonSelect{false};
+    atomic<bool> buttonStart{false};
+    
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 };

@@ -20,20 +20,21 @@ using namespace std;
 using namespace std::chrono;
 
 uint8_t *readRom(const char *);
-void runGameBoy(Screen *, atomic<bool> *);
+void runGameBoy(Screen *, Joypad *, atomic<bool> *);
 
 int main(int argc, char **argv) {
     atomic<bool> exit(false);
 
-    Screen screen;
-    thread gameboyThread(runGameBoy, &screen, &exit);
+    Joypad joypad;
+    Screen screen(&joypad);
+    thread gameboyThread(runGameBoy, &screen, &joypad, &exit);
     screen.run();
 
     exit = true;
     gameboyThread.join();
 }
 
-void runGameBoy(Screen *screen, atomic<bool> *exit) {
+void runGameBoy(Screen *screen, Joypad *joypad, atomic<bool> *exit) {
     uint8_t *bootRom = readRom("bootrom.bin");
     uint8_t *tetris = readRom("tetris.bin");
 
@@ -45,12 +46,11 @@ void runGameBoy(Screen *screen, atomic<bool> *exit) {
         return;
     }
 
-    Joypad joypad;
     Dma dma(&memory);
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
 
-    memory.registerIoDevice(P1, &joypad);
+    memory.registerIoDevice(P1, joypad);
     memory.registerIoDevice(DMA, &dma);
     memory.registerIoDevice(LCDC, &lcdRegs);
     memory.registerIoDevice(STAT, &lcdRegs);

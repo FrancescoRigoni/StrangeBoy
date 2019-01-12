@@ -6,10 +6,14 @@
 #include <condition_variable>
 #include <functional>
 
+#include "Joypad.hpp"
+
 using namespace std;
 
 class Screen {
 private:
+    Joypad *joypad;
+
     SDL_Window* window;
     SDL_Renderer* renderer;
     int currentScanLine = 0;
@@ -21,6 +25,7 @@ private:
     void drawNextLine();
 
 public:
+    Screen(Joypad *);
     void pushLine(uint8_t *);
     uint8_t *popLine();
     void run();
