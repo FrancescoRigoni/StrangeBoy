@@ -15,8 +15,9 @@
 #define FLAG_HALF_CARRY     0b00100000
 #define FLAG_CARRY          0b00010000
 
-#define INTERRUPT_HANDLER_VBLANK 0x0040
-#define INTERRUPT_HANDLER_LCDC   0x0048
+#define INTERRUPT_HANDLER_VBLANK   0x0040
+#define INTERRUPT_HANDLER_LCDC     0x0048
+#define INTERRUPT_HANDLER_JOYPAD   0x0060
 
 class Cpu {
 private:
@@ -27,6 +28,7 @@ private:
     uint16_t regDE;
     uint16_t regHL;
 
+    bool stoppedWaitingForKey = false;
     bool interruptMasterEnable = true;
     long cyclesToSpend = 0;
 

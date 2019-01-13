@@ -1,5 +1,7 @@
 
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 #include "Cpu/Cpu.hpp"
 #include "Util/LogUtil.hpp"
@@ -184,6 +186,14 @@ uint16_t Cpu::imm16() {
 #define OPCODE_XOR_IMM_8_BIT() {                                                      \
     uint8_t arg = imm8();                                                             \
     TRACE_CPU(OPCODE_PFX << "XOR " << cout8Hex(arg));                                 \
+    setRegA(regA() ^ arg);                                                            \
+    OPCODE_XOR_8_BIT_FLAGS(regA());                                                   \
+    USE_CYCLES(8);                                                                    \
+    break;                                                                            \
+}
+#define OPCODE_XOR_REGPTR_8_BIT(REGPTR) {                                             \
+    TRACE_CPU(OPCODE_PFX << "XOR (" << #REGPTR << ")");                               \
+    uint8_t arg = memory->read8(reg##REGPTR);                                         \
     setRegA(regA() ^ arg);                                                            \
     OPCODE_XOR_8_BIT_FLAGS(regA());                                                   \
     USE_CYCLES(8);                                                                    \
@@ -505,6 +515,7 @@ uint16_t Cpu::imm16() {
     setRegA(first-second);                                                            \
     OPCODE_SUB_8_BIT_FLAGS(first, second);                                            \
     USE_CYCLES(8);                                                                    \
+    break;                                                                            \
 }
 #define OPCODE_SUB_REGPTR_8_BIT(REGPTR) {                                             \
     TRACE_CPU(OPCODE_PFX << "SUB (" << #REGPTR << ")");                               \
@@ -513,6 +524,7 @@ uint16_t Cpu::imm16() {
     setRegA(first-second);                                                            \
     OPCODE_SUB_8_BIT_FLAGS(first, second);                                            \
     USE_CYCLES(8);                                                                    \
+    break;                                                                            \
 }
 
 // TODO check carry logic, half carry calculated from bit 11 WTF?
@@ -795,8 +807,7 @@ uint16_t Cpu::imm16() {
 }
 
 // TODO: Could be buggy
-#define OPCODE_DAA() {    \
-DAAExec = true;                                                            \
+#define OPCODE_DAA() {                                                                \
     TRACE_CPU(OPCODE_CB_PFX << "DAA");                                                \
     uint16_t a = regA();                                                              \
     if (!flag(FLAG_SUBTRACT)) {                                                       \
@@ -815,6 +826,19 @@ DAAExec = true;                                                            \
     break;                                                                            \
 }
 
+#define OPCODE_CALL_COND(cond, str) {                                                 \
+    uint16_t dest = imm16();                                                          \
+    TRACE_CPU(OPCODE_PFX << "CALL " << #str << "," << cout16Hex(dest));               \
+    if (cond) {                                                                       \
+        push16(regPC);                                                                \
+        regPC = dest;                                                                 \
+        USE_CYCLES(24);                                                               \
+    } else {                                                                          \
+        USE_CYCLES(12);                                                               \
+    }                                                                                 \
+    break;                                                                            \
+}
+
 void Cpu::acknowledgeInterrupts() {
     if (interruptFlags->acknowledgeVBlankInterrupt()) {
         interruptMasterEnable = false;
@@ -825,7 +849,14 @@ void Cpu::acknowledgeInterrupts() {
         interruptMasterEnable = false;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_LCDC;
+
+    } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
+        interruptMasterEnable = false;
+        push16(regPC);
+        stoppedWaitingForKey = false;
+        regPC = INTERRUPT_HANDLER_JOYPAD;
     }
+
     /*
     Priority:
     V-Blank
@@ -844,10 +875,12 @@ void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
     do {
         execute();
-    } while (cyclesToSpend > 0);
+        if (!memory->bootRomEnabled()) {
+            //std::this_thread::sleep_for(chrono::milliseconds(1000));
+        }
+    } while (cyclesToSpend > 0 && 
+             !stoppedWaitingForKey);
 }
-
-bool DAAExec = false;
 
 void Cpu::execute() {
     uint8_t opcode = memory->read8(regPC++); 
@@ -969,6 +1002,8 @@ void Cpu::execute() {
         case 0xAD: OPCODE_XOR_N_8_BIT(L);
         // XOR n
         case 0xEE: OPCODE_XOR_IMM_8_BIT();
+        // XOR (HL)
+        case 0xAE: OPCODE_XOR_REGPTR_8_BIT(HL);
         // LD (HL), A
         case 0x77: OPCODE_LD_REGPTR_REG_8_BIT(HL, A);
         // LD (HL), B
@@ -1275,7 +1310,14 @@ void Cpu::execute() {
         case 0xD8: OPCODE_RET_COND(flag(FLAG_CARRY), C);
         // RRA
         case 0x1F: OPCODE_RRA();
-
+        // CALL NZ,n
+        case 0xC4: OPCODE_CALL_COND(!flag(FLAG_ZERO), NZ);
+        // CALL Z,n
+        case 0xCC: OPCODE_CALL_COND(flag(FLAG_ZERO), Z);
+        // CALL NC,n
+        case 0xD4: OPCODE_CALL_COND(!flag(FLAG_CARRY), NC);
+        // CALL C,n
+        case 0xDC: OPCODE_CALL_COND(flag(FLAG_CARRY), C);
         // LD A, (HL+)
         case 0x2A:
             TRACE_CPU(OPCODE_PFX << "LD A, (HL+)");
@@ -1339,6 +1381,14 @@ void Cpu::execute() {
             USE_CYCLES(12);
             break;
         }
+        // // STOP
+        // case 0x10: {
+        //     regPC++;
+        //     TRACE_CPU(OPCODE_PFX << "STOP");
+        //     stoppedWaitingForKey = true;
+        //     USE_CYCLES(4);
+        //     break;
+        // }
         // LD ($FF00+C),A
         case 0xE2: {
             TRACE_CPU(OPCODE_PFX << "LD ($FF00+C),A");
@@ -1352,6 +1402,49 @@ void Cpu::execute() {
             memory->write8(regHL, regA());
             regHL++;
             USE_CYCLES(8);
+            break;
+        }
+        // LD SP, HL
+        case 0xF9: {
+            TRACE_CPU(OPCODE_PFX << "LD SP,HL");
+            regSP = regHL;
+            USE_CYCLES(8);
+            break;
+        }
+        // LD (nn), SP
+        case 0x08: {
+            uint16_t addr = imm16();
+            TRACE_CPU(OPCODE_PFX << "LD (" << cout16Hex(addr) << "),SP");
+            memory->write16(addr, regSP);
+            USE_CYCLES(20);
+            break;
+        }
+        // LD A,(C)
+        case 0xF2: {
+            TRACE_CPU(OPCODE_PFX << "LD A,(C)");
+            setRegA(memory->read8(0xFF00+regC()));
+            USE_CYCLES(8);
+            break;
+        }
+        // LDHL SP, n
+        // TODO: Check borrow and half borrow logic
+        case 0xF8: {
+            int8_t arg = imm8();
+            TRACE_CPU(OPCODE_PFX << "LDHL SP," << cout8Hex(arg));
+            uint16_t newSP = regSP + arg;
+            if (arg >= 0) {
+                bool carry = ((uint16_t)(lsbOf(regSP) + arg) & 0x100) == 0x100;
+                bool halfCarry = ((lowNibbleOf(regSP) + lowNibbleOf(arg)) & 0x10) == 0x10;
+                setOrClearFlag(FLAG_CARRY, carry);
+                setOrClearFlag(FLAG_HALF_CARRY, halfCarry);
+            } else {
+                bool carry = lsbOf(newSP) <= lsbOf(regSP);
+                bool halfCarry = lowNibbleOf(newSP) <= lowNibbleOf(regSP);
+                setOrClearFlag(FLAG_CARRY, carry);
+                setOrClearFlag(FLAG_HALF_CARRY, halfCarry);
+            }
+            regSP = newSP;
+            USE_CYCLES(12);
             break;
         }
         // CB Prefix

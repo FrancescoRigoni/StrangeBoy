@@ -9,19 +9,20 @@
 #define IF                    0xFF0F
 #define INTERRUPTS_ENABLE_REG 0xFFFF
 
-#define IE_BIT_VBLANK   0
-#define IE_BIT_LCDC     1
-#define IE_BIT_TIMER    2
-#define IE_BIT_SERIAL   3
-#define IE_BIT_JOYP     4
+#define IE_BIT_VBLANK       0
+#define IE_BIT_LCDC         1
+#define IE_BIT_TIMER        2
+#define IE_BIT_SERIAL       3
+#define IE_BIT_JOYPAD       4
 
-#define IF_BIT_VBLANK   0
-#define IF_BIT_LCDC     1
+#define IF_BIT_VBLANK       0
+#define IF_BIT_LCDC         1
+#define IF_BIT_JOYPAD       4
 
 class InterruptFlags : public IoDevice {
 private:
-    uint8_t flags;
-    uint8_t enableMask;
+    uint8_t flags = 0;
+    uint8_t enableMask = 0;
 
 public:
     virtual void write8(uint16_t, uint8_t);
@@ -32,6 +33,9 @@ public:
 
     void interruptLCDC();
     bool acknowledgeLCDCInterrupt();
+
+    void interruptJoypad();
+    bool acknowledgeJoypadInterrupt();
 };
 
 #endif

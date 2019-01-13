@@ -45,3 +45,19 @@ bool InterruptFlags::acknowledgeLCDCInterrupt() {
     }
     return false;
 }
+
+void InterruptFlags::interruptJoypad() {
+    if (isBitSet(enableMask, IE_BIT_JOYPAD)) {
+        setBit(IF_BIT_JOYPAD, &flags);
+    }
+}
+
+
+bool InterruptFlags::acknowledgeJoypadInterrupt() {
+    if (isBitSet(flags, IF_BIT_JOYPAD) && 
+        isBitSet(enableMask, IE_BIT_JOYPAD)) {
+        resetBit(IF_BIT_JOYPAD, &flags);
+        return true;
+    }
+    return false;
+}

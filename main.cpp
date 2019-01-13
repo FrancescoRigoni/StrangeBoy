@@ -21,14 +21,14 @@ using namespace std;
 using namespace std::chrono;
 
 uint8_t *readRom(const char *);
-void runGameBoy(Screen *, Joypad *, atomic<bool> *);
+void runGameBoy(const char *romPath, Screen *, Joypad *, atomic<bool> *);
 
 int main(int argc, char **argv) {
     atomic<bool> exit(false);
 
     Joypad joypad;
     Screen screen(&joypad);
-    thread gameboyThread(runGameBoy, &screen, &joypad, &exit);
+    thread gameboyThread(runGameBoy, argv[1], &screen, &joypad, &exit);
     screen.run();
 
     exit = true;
@@ -40,17 +40,17 @@ unsigned long getTimeMilliseconds() {
         (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-void runGameBoy(Screen *screen, Joypad *joypad, atomic<bool> *exit) {
+void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool> *exit) {
     uint8_t *bootRom = readRom("roms/bootrom.bin");
-    uint8_t *tetris = readRom("roms/tetris.bin");
+    uint8_t *gameRom = readRom(romPath);
 
-    Memory memory(bootRom, tetris);
+    Memory memory(bootRom, gameRom);
     uint8_t cartType = memory.read16(0x0147);
 
-    if (cartType != 0) {
-        cout << "Cartridge type is " << cout8Hex(cartType) << ". Still not handled" << endl;
-        return;
-    }
+    // if (cartType != 0) {
+    //     cout << "Cartridge type is " << cout8Hex(cartType) << ". Still not handled" << endl;
+    //     return;
+    // }
 
     Dma dma(&memory);
     LCDRegs lcdRegs;
