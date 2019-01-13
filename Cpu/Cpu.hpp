@@ -22,7 +22,6 @@
 class Cpu {
 private:
 	uint16_t regSP;
-
     uint16_t regAF;
     uint16_t regBC;
     uint16_t regDE;
@@ -68,6 +67,12 @@ private:
     inline void setRegE(uint8_t val) { lsbTo(&regDE, val); }
     inline void setRegH(uint8_t val) { msbTo(&regHL, val); }
     inline void setRegL(uint8_t val) { lsbTo(&regHL, val); }
+
+    inline void setRegAF(uint16_t val) { regAF = val & 0xFFF0; }
+    inline void setRegBC(uint16_t val) { regBC = val; }
+    inline void setRegDE(uint16_t val) { regDE = val; }
+    inline void setRegHL(uint16_t val) { regHL = val; }
+    inline void setRegSP(uint16_t val) { regSP = val; }
 
     void acknowledgeInterrupts();
 

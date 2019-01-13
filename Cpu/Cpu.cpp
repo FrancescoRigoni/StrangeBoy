@@ -166,7 +166,7 @@ uint16_t Cpu::imm16() {
 #define OPCODE_LD_N_NN_16_BIT(REG) {                                                  \
     uint16_t arg = imm16();                                                           \
     TRACE_CPU(OPCODE_PFX << "LD " << #REG << "," << cout16Hex(arg));                  \
-    reg##REG = arg;                                                                   \
+    setReg##REG(arg);                                                                   \
     USE_CYCLES(12);                                                                   \
     break;                                                                            \
 }
@@ -307,6 +307,7 @@ uint16_t Cpu::imm16() {
 }
 #define OPCODE_CP_N_8_BIT() {                                                         \
     uint8_t arg = imm8();                                                             \
+    if (arg == 0x2) trace = true; \
     TRACE_CPU(OPCODE_PFX << "CP " << cout8Hex(arg));                                  \
     OPCODE_CP_8_BIT_FLAGS(arg);                                                       \
     USE_CYCLES(8);                                                                    \
@@ -336,7 +337,7 @@ uint16_t Cpu::imm16() {
 
 #define OPCODE_POP_REG_16(REG) {                                                      \
     TRACE_CPU(OPCODE_PFX << "POP " << #REG);                                          \
-    reg##REG = pop16();                                                               \
+    setReg##REG(pop16());                                                               \
     USE_CYCLES(12);                                                                   \
     break;                                                                            \
 }
@@ -533,7 +534,7 @@ uint16_t Cpu::imm16() {
     uint32_t op1 = regHL;                                                             \
     uint32_t op2 = reg##REG;                                                          \
     uint32_t res = op1 + op2;                                                         \
-    regHL = res;                                                                      \
+    setRegHL(res);                                                                      \
     clearFlag(FLAG_SUBTRACT);                                                         \
     uint16_t bit11Check = 0x1000;                                                     \
     setOrClearFlag(FLAG_HALF_CARRY,                                                   \
@@ -662,7 +663,7 @@ uint16_t Cpu::imm16() {
 }
 
 #define OPCODE_RET_COND(COND, CONDSTR) {                                              \
-    TRACE_CPU(OPCODE_PFX << "RET " << #CONDSTR << endl);                              \
+    TRACE_CPU(OPCODE_PFX << "RET " << #CONDSTR);                                      \
     bool eval = COND;                                                                 \
     if (eval) regPC = pop16();                                                        \
     USE_CYCLES(eval ? 20 : 8);                                                        \
@@ -866,6 +867,8 @@ void Cpu::acknowledgeInterrupts() {
     */
 }
 
+bool trace = false;
+
 void Cpu::cycle(int numberOfCycles) {
     // Check for interrupts
     if (interruptMasterEnable) {
@@ -874,9 +877,11 @@ void Cpu::cycle(int numberOfCycles) {
 
     cyclesToSpend = numberOfCycles;
     do {
+        //if (regPC == 0x82C0) trace = true;
+
         execute();
-        if (!memory->bootRomEnabled()) {
-            //std::this_thread::sleep_for(chrono::milliseconds(1000));
+        if (!memory->bootRomEnabled() && trace) {
+            std::this_thread::sleep_for(chrono::milliseconds(1000));
         }
     } while (cyclesToSpend > 0 && 
              !stoppedWaitingForKey);
