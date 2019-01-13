@@ -136,7 +136,7 @@ void PPU::doDrawLine() {
 
 void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
     uint8_t scrollY = lcdRegs->read8(SCY);
-    uint16_t scrolledLine = line + scrollY;
+    uint16_t scrolledLine = line;// + scrollY;
 
     uint8_t *backgroundPalette = decodePaletteByte(BGP);
 

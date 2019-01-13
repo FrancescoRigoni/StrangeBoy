@@ -64,6 +64,10 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
         return;
     }
 
+    if (address >= VIDEO_RAM_START && address < VIDEO_RAM_START+VIDEO_RAM_SIZE) {
+        cout << "Access to VRAM " << cout16Hex(address) << endl;
+    }
+
     traceEnabled = trace;
     reading = false;
     uint16_t decodedAddress = address;
