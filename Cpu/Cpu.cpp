@@ -28,8 +28,8 @@ Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags) {
 void Cpu::push8(uint8_t val) {
     TRACE_STACK_OP(endl)
     TRACE_STACK_OP("Push 8 bit value SP=" << cout16Hex(regSP) << " -> " << cout8Hex(val));
-    memory->write8(regSP, val);
     regSP--;
+    memory->write8(regSP, val);
 }
 
 void Cpu::push16(uint16_t val) {
@@ -38,10 +38,9 @@ void Cpu::push16(uint16_t val) {
 }
 
 uint8_t Cpu::pop8() {
-    regSP++;
     TRACE_STACK_OP(endl)
     TRACE_STACK_OP("Pop 8 bit value SP=" << cout16Hex(regSP) << " <- " << cout8Hex(memory->read8(regSP)));
-    return memory->read8(regSP);
+    return memory->read8(regSP++);
 }
 
 uint16_t Cpu::pop16() {
@@ -71,14 +70,15 @@ uint16_t Cpu::imm16() {
 
 #define OPCODE_DI() {                      \
     TRACE_CPU(OPCODE_PFX << "DI");         \
-    interruptMasterEnable = false;         \
+    interruptMasterEnable = 0;             \
     USE_CYCLES(4);                         \
     break;                                 \
 }
 
 #define OPCODE_EI() {                     \
     TRACE_CPU(OPCODE_PFX << "EI");        \
-    interruptMasterEnable = true;         \
+    trace = true; \
+    interruptMasterEnable = 1;            \
     USE_CYCLES(4);                        \
     break;                                \
 }
@@ -218,7 +218,6 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
-// DAA clear
 #define OPCODE_INC_8_BIT_FLAGS(value) {                                               \
     setOrClearFlag(FLAG_ZERO, value == 0);                                            \
     setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(value) == 0);                         \
@@ -418,13 +417,15 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_PFX << "RLA");                                                   \
     uint8_t before = regA();                                                          \
     setRegA((before << 1) | flag(FLAG_CARRY));                                        \
-    OPCODE_RL_8_BIT_FLAGS(before, regA());                                            \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 7));                                  \
+    clearFlag(FLAG_ZERO);                                                             \
+    clearFlag(FLAG_SUBTRACT);                                                         \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
     USE_CYCLES(4);                                                                    \
     break;                                                                            \
 }
 
 // TODO check carry logic
-// DAA clear
 #define OPCODE_ADC_8_BIT(OP2) {                                                       \
     uint16_t op1 = regA();                                                            \
     uint16_t op2 = OP2;                                                               \
@@ -458,7 +459,6 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
-// TODO check carry logic
 #define OPCODE_ADD_8_BIT(OP2) {                                                       \
     uint16_t op1 = regA();                                                            \
     uint16_t op2 = OP2;                                                               \
@@ -493,9 +493,11 @@ uint16_t Cpu::imm16() {
 
 #define OPCODE_SUB_8_BIT_FLAGS(first, second) {                                       \
     setFlag(FLAG_SUBTRACT);                                                           \
+    bool halfCarry = ((int16_t)(lowNibbleOf(first) - lowNibbleOf(second))) < 0;       \
+    bool carry = ((int16_t)(first - second)) < 0;                                     \
     setOrClearFlag(FLAG_ZERO, first == second);                                       \
-    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(first) < lowNibbleOf(second));        \
-    setOrClearFlag(FLAG_CARRY, first < second);                                       \
+    setOrClearFlag(FLAG_HALF_CARRY, halfCarry);                                       \
+    setOrClearFlag(FLAG_CARRY, carry);                                                \
 }
 #define OPCODE_SUB_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_PFX << "SUB " << #REG);                                          \
@@ -507,10 +509,9 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 #define OPCODE_SUB_IMM_8_BIT() {                                                      \
-    uint8_t arg = imm8();                                                             \
-    TRACE_CPU(OPCODE_PFX << "SUB " << cout8Hex(arg));                                 \
+    uint8_t second = imm8();                                                          \
+    TRACE_CPU(OPCODE_PFX << "SUB " << cout8Hex(second));                              \
     uint8_t first = regA();                                                           \
-    uint8_t second = arg;                                                             \
     setRegA(first-second);                                                            \
     OPCODE_SUB_8_BIT_FLAGS(first, second);                                            \
     USE_CYCLES(8);                                                                    \
@@ -747,12 +748,11 @@ uint16_t Cpu::imm16() {
     setOrClearFlag(FLAG_CARRY, isBitSet(before, 7));                                  \
     setOrClearFlag(FLAG_ZERO, after == 0);                                            \
     clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY);                                       \
-    clearFlag(FLAG_HALF_CARRY);                                                       \
 }
 #define OPCODE_RLC_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_CB_PFX << "RLC " << #REG);                                       \
     uint8_t before = reg##REG();                                                      \
-    uint8_t after = before << 1;                                                      \
+    uint8_t after = (before << 1) | isBitSet(before, 7);                              \
     setReg##REG(after);                                                               \
     OPCODE_RLC_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(8);                                                                    \
@@ -761,7 +761,7 @@ uint16_t Cpu::imm16() {
 #define OPCODE_RLC_REGPTR_8_BIT(REGPTR) {                                             \
     TRACE_CPU(OPCODE_CB_PFX << "RLC (" << #REGPTR << ")");                            \
     uint8_t before = memory->read8(reg##REGPTR);                                      \
-    uint8_t after = before << 1;                                                      \
+    uint8_t after = (before << 1) | isBitSet(before, 7);                              \
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_RLC_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(16);                                                                   \
@@ -769,8 +769,8 @@ uint16_t Cpu::imm16() {
 }
 #define OPCODE_RLCA() {                                                               \
     TRACE_CPU(OPCODE_PFX << "RLCA");                                                  \
-    uint8_t before = regA()    ;                                                      \
-    uint8_t after = before << 1;                                                      \
+    uint8_t before = regA();                                                          \
+    uint8_t after = (before << 1) | isBitSet(before, 7);                              \
     setRegA(after);                                                                   \
     setOrClearFlag(FLAG_CARRY, isBitSet(before, 7));                                  \
     clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY | FLAG_ZERO);                           \
@@ -787,7 +787,7 @@ uint16_t Cpu::imm16() {
 #define OPCODE_RRC_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_CB_PFX << "RRC " << #REG);                                       \
     uint8_t before = reg##REG();                                                      \
-    uint8_t after = before >> 1;                                                      \
+    uint8_t after = (before >> 1) | (isBitSet(before, 0) ? 0x80 : 0x00);              \
     setReg##REG(after);                                                               \
     OPCODE_RRC_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(8);                                                                    \
@@ -796,10 +796,20 @@ uint16_t Cpu::imm16() {
 #define OPCODE_RRC_REGPTR_8_BIT(REGPTR) {                                             \
     TRACE_CPU(OPCODE_CB_PFX << "RRC (" << #REGPTR << ")");                            \
     uint8_t before = memory->read8(reg##REGPTR);                                      \
-    uint8_t after = before >> 1;                                                      \
+    uint8_t after = (before >> 1) | (isBitSet(before, 0) ? 0x80 : 0x00);              \
     memory->write8(reg##REGPTR, after);                                               \
     OPCODE_RRC_8_BIT_FLAGS(before, after);                                            \
     USE_CYCLES(16);                                                                   \
+    break;                                                                            \
+}
+#define OPCODE_RRCA() {                                                               \
+    TRACE_CPU(OPCODE_PFX << "RRCA");                                                  \
+    uint8_t before = regA();                                                          \
+    uint8_t after = (before >> 1) | (isBitSet(before, 0) ? 0x80 : 0x00);              \
+    setRegA(after);                                                                   \
+    setOrClearFlag(FLAG_CARRY, isBitSet(before, 0));                                  \
+    clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY | FLAG_ZERO);                           \
+    USE_CYCLES(4);                                                                    \
     break;                                                                            \
 }
 
@@ -808,17 +818,27 @@ uint16_t Cpu::imm16() {
     TRACE_CPU(OPCODE_CB_PFX << "DAA");                                                \
     uint16_t a = regA();                                                              \
     if (!flag(FLAG_SUBTRACT)) {                                                       \
-        if (flag(FLAG_HALF_CARRY) || lowNibbleOf(a) > 9) a += 0x06;                   \
-        if (flag(FLAG_CARRY) || a > 0x9F) a += 0x60;                                  \
+        if (flag(FLAG_HALF_CARRY) || (lowNibbleOf(a) > 9)) {                          \
+            a += 0x6;                                                                 \
+        }                                                                             \
+        if (flag(FLAG_CARRY) || (a > 0x9f)) {                                         \
+            a += 0x60;                                                                \
+        }                                                                             \
+    } else {                                                                          \
+        if (flag(FLAG_HALF_CARRY)) {                                                  \
+            a -= 0x6;                                                                 \
+            a &= 0xff;                                                                \
+        }                                                                             \
+        if (flag(FLAG_CARRY)) {                                                       \
+            a -= 0x60;                                                                \
+        }                                                                             \
     }                                                                                 \
-    else {                                                                            \
-        if (flag(FLAG_HALF_CARRY)) a = (a - 6) & 0xFF;                                \
-        if (flag(FLAG_CARRY)) a -= 0x60;                                              \
+    if (isBitSet(a,8)) {                                                              \
+        setFlag(FLAG_CARRY);                                                          \
     }                                                                                 \
-    clearFlag(FLAG_HALF_CARRY | FLAG_ZERO);                                           \
-    if (isBitSet(a, 8)) setFlag(FLAG_CARRY);                                          \
-    if (a == 0) setFlag(FLAG_ZERO);                                                   \
+    clearFlag(FLAG_HALF_CARRY);                                                       \
     setRegA(a);                                                                       \
+    setOrClearFlag(FLAG_ZERO, regA() == 0);                                           \
     USE_CYCLES(4);                                                                    \
     break;                                                                            \
 }
@@ -835,15 +855,17 @@ uint16_t Cpu::imm16() {
     }                                                                                 \
     break;                                                                            \
 }
-
+ 
 #define OPCODE_SBC_8_BIT(arg) {                                                       \
-    uint8_t first = regA();                                                           \
-    uint8_t second = arg + (flag(FLAG_CARRY) ? 1 : 0);                                \
-    setRegA(first - second);                                                          \
-    setFlag(FLAG_SUBTRACT);                                                           \
+    uint8_t op1 = regA();                                                             \
+    uint8_t op2 = arg;                                                                \
+    int result8 = op1 - op2 - flag(FLAG_CARRY);                                       \
+    int result4 = lowNibbleOf(op1) - lowNibbleOf(op2) - flag(FLAG_CARRY);             \
+    setRegA(result8);                                                                 \
+    setOrClearFlag(FLAG_HALF_CARRY, result4 < 0);                                     \
+    setOrClearFlag(FLAG_CARRY, result8 < 0);                                          \
     setOrClearFlag(FLAG_ZERO, regA() == 0);                                           \
-    setOrClearFlag(FLAG_HALF_CARRY, lowNibbleOf(first) < lowNibbleOf(second));        \
-    setOrClearFlag(FLAG_CARRY, first < second);                                       \
+    setFlag(FLAG_SUBTRACT);                                                           \
 }
 #define OPCODE_SBC_REG_8_BIT(REG) {                                                   \
     TRACE_CPU(OPCODE_PFX << "SBC A," << #REG);                                        \
@@ -867,17 +889,17 @@ uint16_t Cpu::imm16() {
 
 void Cpu::acknowledgeInterrupts() {
     if (interruptFlags->acknowledgeVBlankInterrupt()) {
-        interruptMasterEnable = false;
+        interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_VBLANK;
 
     } else if (interruptFlags->acknowledgeLCDCInterrupt()) {
-        interruptMasterEnable = false;
+        interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_LCDC;
 
     } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
-        interruptMasterEnable = false;
+        interruptMasterEnable = 0;
         push16(regPC);
         stoppedWaitingForKey = false;
         regPC = INTERRUPT_HANDLER_JOYPAD;
@@ -895,17 +917,20 @@ void Cpu::acknowledgeInterrupts() {
 bool trace = false;
 
 void Cpu::cycle(int numberOfCycles) {
-    // Check for interrupts
-    if (interruptMasterEnable) {
-        acknowledgeInterrupts();
-    }
-
     cyclesToSpend = numberOfCycles;
     do {
+        // Check for interrupts
+        if (interruptMasterEnable == 2) {
+            acknowledgeInterrupts();
+        } else if (interruptMasterEnable == 1) {
+            interruptMasterEnable++;
+        }
+
         execute();
-        // if (!memory->bootRomEnabled() && trace) {
-        //     std::this_thread::sleep_for(chrono::milliseconds(1000));
-        // }
+        
+        if (!memory->bootRomEnabled() && trace) {
+            std::this_thread::sleep_for(chrono::milliseconds(1000));
+        }
     } while (cyclesToSpend > 0 && 
              !stoppedWaitingForKey);
 }
@@ -1366,6 +1391,8 @@ void Cpu::execute() {
         case 0x9E: OPCODE_SBC_REGPTR_8_BIT(HL);
         // SBC n
         case 0xDE: OPCODE_SBC_IMM_8_BIT();
+        // RRCA
+        case 0x0F: OPCODE_RRCA();
         // LD A, (HL+)
         case 0x2A:
             TRACE_CPU(OPCODE_PFX << "LD A, (HL+)");
@@ -1478,7 +1505,7 @@ void Cpu::execute() {
         // TODO: Check borrow and half borrow logic
         case 0xF8: {
             int8_t arg = imm8();
-            TRACE_CPU(OPCODE_PFX << "LDHL SP," << cout8Hex(arg));
+            TRACE_CPU(OPCODE_PFX << "LDHL SP," << +arg);
             uint16_t newSP = regSP + arg;
             if (arg >= 0) {
                 bool carry = ((uint16_t)(lsbOf(regSP) + arg) & 0x100) == 0x100;
@@ -1515,6 +1542,23 @@ void Cpu::execute() {
             clearFlag(FLAG_SUBTRACT | FLAG_ZERO);
             regSP = newSP;
             USE_CYCLES(16);
+            break;
+        }
+        // SCF
+        case 0x37: {
+            TRACE_CPU(OPCODE_PFX << "SCF" << endl);
+            setFlag(FLAG_CARRY);
+            clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY);
+            USE_CYCLES(4);
+            break;
+        }
+        // CCF
+        case 0x3F: {
+            TRACE_CPU(OPCODE_PFX << "CCF" << endl);
+            if (flag(FLAG_CARRY)) clearFlag(FLAG_CARRY);
+            else setFlag(FLAG_CARRY);    
+            clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY);
+            USE_CYCLES(4);
             break;
         }
         // CB Prefix
@@ -2029,7 +2073,7 @@ void Cpu::execute() {
             // RRC E
             case 0x0B: OPCODE_RRC_REG_8_BIT(E);
             // RRC H
-            case 0x0C: OPCODE_RRC_REG_8_BIT(C);
+            case 0x0C: OPCODE_RRC_REG_8_BIT(H);
             // RRC L
             case 0x0D: OPCODE_RRC_REG_8_BIT(L);
             // RRC (HL)
