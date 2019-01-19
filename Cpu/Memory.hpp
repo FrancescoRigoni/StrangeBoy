@@ -33,8 +33,13 @@ using namespace std;
 
 #define BOOT_ROM_SIZE               0x100
 
+#define ROM_BANK_SIZE               0x4000
+
 class Memory {
 private:
+
+    uint8_t mbc1RomBankNumber = 1;
+
     uint8_t *memory;
     uint8_t *bootRom;
     uint8_t *gameRom;

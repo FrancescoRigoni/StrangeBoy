@@ -28,6 +28,7 @@ private:
     uint16_t regHL;
 
     bool stoppedWaitingForKey = false;
+    bool halted = false;
     int interruptMasterEnable = 0;
     long cyclesToSpend = 0;
 

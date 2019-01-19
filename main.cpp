@@ -6,6 +6,12 @@
 #include <atomic>
 #include <algorithm>
 
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "Devices/Io.hpp"
 #include "Cpu/Memory.hpp"
 #include "PPU/PPU.hpp"
@@ -16,6 +22,7 @@
 #include "Devices/InterruptFlags.hpp"
 #include "Util/LogUtil.hpp"
 #include "Screen/Screen.hpp"
+#include "Cartridge.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -23,7 +30,20 @@ using namespace std::chrono;
 uint8_t *readRom(const char *);
 void runGameBoy(const char *romPath, Screen *, Joypad *, atomic<bool> *);
 
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 int main(int argc, char **argv) {
+    signal(SIGSEGV, handler);
+
     atomic<bool> exit(false);
 
     Joypad joypad;
@@ -44,14 +64,11 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     uint8_t *bootRom = readRom("roms/bootrom.bin");
     uint8_t *gameRom = readRom(romPath);
 
+    Cartridge cartridge;
+    CartridgeInfo *cartridgeInfo = 0;
+    cartridge.parse(gameRom, cartridgeInfo);
+
     Memory memory(bootRom, gameRom);
-    uint8_t cartType = memory.read16(0x0147);
-
-    // if (cartType != 0) {
-    //     cout << "Cartridge type is " << cout8Hex(cartType) << ". Still not handled" << endl;
-    //     return;
-    // }
-
     Dma dma(&memory);
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;

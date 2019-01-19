@@ -58,11 +58,14 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
         ioMap[address]->write8(address, value);
     }
 
-    if (address < VIDEO_RAM_START) {
-        // MBC still to do
-        cout << "MBC: Writing " << cout8Hex(value) << " to " << cout16Hex(address) << endl;
+    if (address >= 0x2000 && address <= 0x7FFF) {
+        // MBC in progress
+        // cout << "MBC: Writing " << cout8Hex(value) << " to " << cout16Hex(address) << endl;
+        mbc1RomBankNumber = value & 0b00011111;
+        if (mbc1RomBankNumber == 0) mbc1RomBankNumber = 1;
         return;
     }
+
 
     traceEnabled = trace;
     reading = false;
@@ -74,6 +77,9 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
 uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
     if (*address < BOOT_ROM_SIZE && bootRomEnabled()) {
         return bootRom;
+    } else if (*address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
+        *address = (*address-ROM_BANK_SWTC_START) + (ROM_BANK_SIZE * mbc1RomBankNumber);
+        return gameRom;
     } else if (*address < VIDEO_RAM_START) {
         return gameRom;
     } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {

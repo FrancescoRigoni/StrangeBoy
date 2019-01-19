@@ -10,7 +10,7 @@ using namespace std;
 #define cout8Hex(value) hex << "$" << setfill('0') << setw(2) << +value
 #define cout16Hex(value) hex << "$" << setfill('0') << setw(4) << value
 
-#define TRACE_CPU_ON
+//#define TRACE_CPU_ON
 //#define TRACE_STACK_OP_ON
 //#define TRACE_OAM_ON
 //#define TRACE_VRAM_ON
@@ -19,6 +19,7 @@ using namespace std;
 //#define TRACE_JOYPAD_ON
 //#define TRACE_DMA_ON
 //#define TRACE_SCREEN_ON
+//#define TRACE_CART_INFO_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
@@ -26,7 +27,7 @@ using namespace std;
 //if (regPC >= 0x017e && regPC <= 0x020b) cout << expr;
 #ifdef TRACE_CPU_ON
     #define TRACE_CPU(expr) {                          \
-        if (/*!memory->bootRomEnabled()*/ trace) cout << expr;   \
+        if (!memory->bootRomEnabled()) cout << expr;   \
     }
 #else
     #define TRACE_CPU(expr) {}
@@ -78,6 +79,12 @@ using namespace std;
     #define TRACE_SCREEN(expr) cout << expr;
 #else
     #define TRACE_SCREEN(expr) {}
+#endif
+
+#ifdef TRACE_CART_INFO_ON
+    #define TRACE_CART_INFO(expr) cout << expr;
+#else
+    #define TRACE_CART_INFO(expr) {}
 #endif
 
 #endif

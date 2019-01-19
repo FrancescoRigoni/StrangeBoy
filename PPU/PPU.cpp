@@ -109,7 +109,7 @@ void PPU::doDrawLine() {
     if (!lcdRegs->isScreenOn()) {
         TRACE_PPU("Screen is off" << endl);
         uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
-        memset(pixelsForLine, sizeof(uint8_t), 0);
+        memset(pixelsForLine, 0, sizeof(uint8_t) * SCREEN_WIDTH_PX);
         screen->pushLine(pixelsForLine);
         return;
     }
@@ -136,17 +136,24 @@ void PPU::doDrawLine() {
 
 void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
     uint8_t scrollY = lcdRegs->read8(SCY);
+    uint8_t scrollX = lcdRegs->read8(SCX);
     uint16_t scrolledLine = line;// + scrollY;
 
-    uint8_t *backgroundPalette = decodePaletteByte(BGP);
+    if (scrollX > 0) {
+        cout << "ScrollX: " << cout8Hex(scrollX) << endl;
+    }
+
+    uint8_t *palette = new uint8_t[4];
+    decodePaletteByte(BGP, palette);
 
     // Go on drawing the tiles pixels for this line
     int rowInTilesMap = scrolledLine/BACKGROUND_TILE_HEIGHT_PX;
     uint16_t tileMapAddress = lcdRegs->addressForBackgroundTilesMap();
 
     for (int x = 0; x < SCREEN_WIDTH_PX; x++) {
+        uint16_t scrolledColumn = scrollX + x;
 
-        int colInTilesMap = x/BACKGROUND_TILE_WIDTH_PX;
+        int colInTilesMap = scrolledColumn/BACKGROUND_TILE_WIDTH_PX;
         uint16_t tileNumberAddress = tileMapAddress + 
             (rowInTilesMap*BACKGROUND_TILE_MAP_ROW_SIZE_BYTES) + 
             colInTilesMap;
@@ -154,7 +161,7 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
 
         uint16_t tileAddress = lcdRegs->addressForBackgroundTile(tileNumber);
 
-        int xInTile = x%BACKGROUND_TILE_WIDTH_PX;
+        int xInTile = scrolledColumn%BACKGROUND_TILE_WIDTH_PX;
         int yInTile = scrolledLine%BACKGROUND_TILE_HEIGHT_PX;    // Calculate positions in tile for current px
 
         uint16_t yOffsetInTile = yInTile*2;                      // Two bytes per row
@@ -168,10 +175,10 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
         uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
         uint8_t color = msbc | lsbc;
 
-        pixels[x] = backgroundPalette[color];
+        pixels[x] = palette[color];
     }
 
-    delete[] backgroundPalette;
+    delete[] palette;
 }
 
 void PPU::drawWindowPixels(int line, uint8_t *pixels) {
@@ -189,6 +196,8 @@ typedef struct {
 #define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - SPRITE_WIDTH_PX
 #define SPRITE_SCREEN_Y(spriteYFromAttrTable) spriteYFromAttrTable - 16
 
+#define SPRITE_ATTRIBUTE_Y_FLIP      6
+#define SPRITE_ATTRIBUTE_X_FLIP      5
 #define SPRITE_ATTRIBUTE_PALETTE_BIT 4
 
 void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
@@ -214,6 +223,8 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         }
     }
 
+    // TODO: sort sprites by x coordinate.
+
     for (auto spriteAttributes : spritesEntriesForLine) {
         if (SPRITE_SCREEN_X(spriteAttributes->xPos) == 0 || 
             SPRITE_SCREEN_X(spriteAttributes->xPos) >= SCREEN_WIDTH_PX) {
@@ -222,32 +233,47 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
             // line are drawn.
             continue;
         }
-
-        uint8_t *palette;
-        if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_PALETTE_BIT)) palette = decodePaletteByte(OBJ_PAL_1);
-        else palette = decodePaletteByte(OBJ_PAL_0);
                
         uint16_t spriteData = lcdRegs->addressForSprite(spriteAttributes->patternNumber);
-        uint8_t lineInSpriteData = spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line;
+        uint8_t lineInSpriteData;
+
+        // Handle vertical flip
+        if (isBitClear(spriteAttributes->flags, SPRITE_ATTRIBUTE_Y_FLIP)) {
+            lineInSpriteData = lcdRegs->spriteHeightPx() - 
+                (spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line);             
+        } else {
+            lineInSpriteData = spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line;
+        }
+
         uint16_t addressOfLineInSpriteData = spriteData + (lineInSpriteData*2);
         uint8_t lsb = memory->read8(addressOfLineInSpriteData, false);
         uint8_t msb = memory->read8(addressOfLineInSpriteData+1, false);
 
         int pixelPositionInLine = SPRITE_SCREEN_X(spriteAttributes->xPos);
-        for (int i = 7; i >= 0; i--) {
-            if (pixelPositionInLine < 0) {
-                // Sprite begins off the screen, do not draw these pixels
-                continue;
+
+        uint8_t *palette = new uint8_t[4];
+        if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_PALETTE_BIT)) 
+            decodePaletteByte(OBJ_PAL_1, palette);
+        else 
+            decodePaletteByte(OBJ_PAL_0, palette);
+
+        // Handle horizontal flip
+        bool xFlipped = isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_X_FLIP);
+        for (int i = (xFlipped ? 0 : 7); 
+                 i != (xFlipped ? 8 : -1); 
+                 i += (xFlipped ? 1 : -1)) {
+
+            if (pixelPositionInLine > 0 && 
+                pixelPositionInLine < SCREEN_WIDTH_PX) {
+
+                uint8_t mask = 1 << i;
+                uint8_t msbc = ((msb & mask) >> i) << 1;
+                uint8_t lsbc = (lsb & mask) >> i;
+                uint8_t color = msbc | lsbc;
+
+                // TODO: Handle transparent color and priority flag
+                if (color > 0) pixels[pixelPositionInLine] = palette[color];
             }
-
-            uint8_t mask = 1 << i;
-            uint8_t msbc = ((msb & mask) >> i) << 1;
-            uint8_t lsbc = (lsb & mask) >> i;
-            uint8_t color = msbc | lsbc;
-
-            // TODO: Handle transparent color
-            pixels[pixelPositionInLine] = palette[color];
-
             if (++pixelPositionInLine > SCREEN_WIDTH_PX) {
                 // Sprite goes off the screen, stop drawing it
                 break;
@@ -258,12 +284,10 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
     }
 }
 
-uint8_t *PPU::decodePaletteByte(uint16_t address) {
-    uint8_t *palette = new uint8_t[4];
+void PPU::decodePaletteByte(uint16_t address, uint8_t *palette) {
     uint8_t paletteByte = memory->read8(address);
     palette[0] = paletteByte & 0b00000011;
     palette[1] = (paletteByte & 0b00001100) >> 2;
     palette[2] = (paletteByte & 0b00110000) >> 4;
     palette[3] = (paletteByte & 0b11000000) >> 6;
-    return palette;
 }

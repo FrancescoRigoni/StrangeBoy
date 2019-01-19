@@ -77,7 +77,6 @@ uint16_t Cpu::imm16() {
 
 #define OPCODE_EI() {                     \
     TRACE_CPU(OPCODE_PFX << "EI");        \
-    trace = true; \
     interruptMasterEnable = 1;            \
     USE_CYCLES(4);                        \
     break;                                \
@@ -396,8 +395,7 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
-// Rotate A right through carry (unlike RLC), some docs says always clear
-// zero flag, some others only clear if result is zero.
+// Rotate A right through carry (unlike RLC)
 #define OPCODE_RRA() {                                                                \
     TRACE_CPU(OPCODE_PFX << "RRA");                                                   \
     uint8_t before = regA();                                                          \
@@ -535,7 +533,7 @@ uint16_t Cpu::imm16() {
     setRegHL(res);                                                                    \
     clearFlag(FLAG_SUBTRACT);                                                         \
     setOrClearFlag(FLAG_HALF_CARRY,                                                   \
-        (((op1&0xFFF) + (op2&0xFFF)) & 0x1000) == 0x1000);                             \
+        (((op1&0xFFF) + (op2&0xFFF)) & 0x1000) == 0x1000);                            \
     setOrClearFlag(FLAG_CARRY,                                                        \
         ((op1 + op2) & 0x10000) == 0x10000);                                          \
     USE_CYCLES(8);                                                                    \
@@ -813,32 +811,23 @@ uint16_t Cpu::imm16() {
     break;                                                                            \
 }
 
-// TODO: Could be buggy
 #define OPCODE_DAA() {                                                                \
     TRACE_CPU(OPCODE_CB_PFX << "DAA");                                                \
-    uint16_t a = regA();                                                              \
+    int tmp = regA();                                                                 \
     if (!flag(FLAG_SUBTRACT)) {                                                       \
-        if (flag(FLAG_HALF_CARRY) || (lowNibbleOf(a) > 9)) {                          \
-            a += 0x6;                                                                 \
-        }                                                                             \
-        if (flag(FLAG_CARRY) || (a > 0x9f)) {                                         \
-            a += 0x60;                                                                \
-        }                                                                             \
+        if (flag(FLAG_HALF_CARRY) || (tmp & 0x0F) > 9) tmp += 6;                      \
+        if (flag(FLAG_CARRY) || tmp > 0x9F ) tmp += 0x60;                             \
     } else {                                                                          \
         if (flag(FLAG_HALF_CARRY)) {                                                  \
-            a -= 0x6;                                                                 \
-            a &= 0xff;                                                                \
+            tmp -= 6;                                                                 \
+            if (!flag(FLAG_CARRY)) tmp &= 0xFF;                                       \
         }                                                                             \
-        if (flag(FLAG_CARRY)) {                                                       \
-            a -= 0x60;                                                                \
-        }                                                                             \
+        if (flag(FLAG_CARRY)) tmp -= 0x60;                                            \
     }                                                                                 \
-    if (isBitSet(a,8)) {                                                              \
-        setFlag(FLAG_CARRY);                                                          \
-    }                                                                                 \
-    clearFlag(FLAG_HALF_CARRY);                                                       \
-    setRegA(a);                                                                       \
-    setOrClearFlag(FLAG_ZERO, regA() == 0);                                           \
+    clearFlag(FLAG_HALF_CARRY | FLAG_ZERO);                                           \
+    if (tmp & 0x100) setFlag(FLAG_CARRY);                                             \
+    setRegA(tmp & 0xFF);                                                              \
+    if (!regA()) setFlag(FLAG_ZERO);                                                  \
     USE_CYCLES(4);                                                                    \
     break;                                                                            \
 }
@@ -892,17 +881,21 @@ void Cpu::acknowledgeInterrupts() {
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_VBLANK;
+        halted = false;
 
     } else if (interruptFlags->acknowledgeLCDCInterrupt()) {
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_LCDC;
+        halted = false;
 
     } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
         interruptMasterEnable = 0;
         push16(regPC);
         stoppedWaitingForKey = false;
         regPC = INTERRUPT_HANDLER_JOYPAD;
+        halted = false;
+
     }
 
     /*
@@ -926,12 +919,15 @@ void Cpu::cycle(int numberOfCycles) {
             interruptMasterEnable++;
         }
 
-        execute();
-        
-        if (!memory->bootRomEnabled() && trace) {
-            std::this_thread::sleep_for(chrono::milliseconds(1000));
+        if (!halted) {
+            execute();
         }
+
+        // if (!memory->bootRomEnabled() && trace) {
+        //     std::this_thread::sleep_for(chrono::milliseconds(1000));
+        // }
     } while (cyclesToSpend > 0 && 
+             !halted &&
              !stoppedWaitingForKey);
 }
 
@@ -1456,14 +1452,14 @@ void Cpu::execute() {
             USE_CYCLES(12);
             break;
         }
-        // // STOP
-        // case 0x10: {
-        //     regPC++;
-        //     TRACE_CPU(OPCODE_PFX << "STOP");
-        //     stoppedWaitingForKey = true;
-        //     USE_CYCLES(4);
-        //     break;
-        // }
+        // STOP
+        case 0x10: {
+            regPC++;
+            TRACE_CPU(OPCODE_PFX << "STOP");
+            stoppedWaitingForKey = true;
+            USE_CYCLES(4);
+            break;
+        }
         // LD ($FF00+C),A
         case 0xE2: {
             TRACE_CPU(OPCODE_PFX << "LD ($FF00+C),A");
@@ -1558,6 +1554,12 @@ void Cpu::execute() {
             if (flag(FLAG_CARRY)) clearFlag(FLAG_CARRY);
             else setFlag(FLAG_CARRY);    
             clearFlag(FLAG_SUBTRACT | FLAG_HALF_CARRY);
+            USE_CYCLES(4);
+            break;
+        }
+        case 0x76: {
+            TRACE_CPU(OPCODE_PFX << "HALT" << endl);
+            halted = true;
             USE_CYCLES(4);
             break;
         }

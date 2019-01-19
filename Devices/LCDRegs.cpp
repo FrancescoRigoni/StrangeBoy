@@ -46,6 +46,9 @@ void LCDRegs::write8(uint16_t address, uint8_t value) {
     else if (address == SCX) this->scx = value;
     else if (address == LY) this->ly = value;
     else if (address == LYC) this->lyc = value;
+    else {
+        TRACE_IO(endl << "LCDRegs : Access to unhandled address " << cout16Hex(address) << endl);
+    }
 }
 
 uint8_t LCDRegs::read8(uint16_t address) {
@@ -63,7 +66,7 @@ uint8_t LCDRegs::read8(uint16_t address) {
 
 uint16_t LCDRegs::addressForBackgroundTile(uint8_t tileNumber) {
     bool dataSelect = isBitSet(lcdc, LCDC_BG_AND_WIN_TILE_DATA_SELECT_BIT);
-    uint16_t baseAddress = dataSelect ? 0x8000 : 0x8800;
+    uint16_t baseAddress = dataSelect ? 0x8000 : 0x9000;
 
     if (dataSelect) {
         // Unsigned offset
@@ -71,8 +74,8 @@ uint16_t LCDRegs::addressForBackgroundTile(uint8_t tileNumber) {
         return baseAddress + uTileOffset;
     } else {
         // Signed offset
-        int16_t sTileNumber = tileNumber;
-        int16_t sTileOffset = sTileNumber * BACKGROUND_TILE_SIZE_BYTES;
+        int8_t sTileNumber = tileNumber;
+        int16_t sTileOffset = (int16_t)sTileNumber * BACKGROUND_TILE_SIZE_BYTES;
         return baseAddress + sTileOffset;
     }
 }
