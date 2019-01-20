@@ -135,13 +135,9 @@ void PPU::doDrawLine() {
 }
 
 void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
-    uint8_t scrollY = lcdRegs->read8(SCY);
-    uint8_t scrollX = lcdRegs->read8(SCX);
-    uint16_t scrolledLine = line;// + scrollY;
-
-    if (scrollX > 0) {
-        cout << "ScrollX: " << cout8Hex(scrollX) << endl;
-    }
+    int8_t scrollY = lcdRegs->read8(SCY);
+    int8_t scrollX = lcdRegs->read8(SCX);
+    uint16_t scrolledLine = line + scrollY;
 
     uint8_t *palette = new uint8_t[4];
     decodePaletteByte(BGP, palette);

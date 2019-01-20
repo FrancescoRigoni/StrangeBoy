@@ -37,8 +37,8 @@ class LCDRegs : public IoDevice {
 private:
     uint8_t lcdc;
     uint8_t stat;
-    uint8_t scy;
-    uint8_t scx;
+    int8_t scy;
+    int8_t scx;
     uint8_t ly = 0;
     uint8_t lyc;
 
