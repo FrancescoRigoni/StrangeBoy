@@ -20,6 +20,7 @@ using namespace std;
 //#define TRACE_DMA_ON
 //#define TRACE_SCREEN_ON
 //#define TRACE_CART_INFO_ON
+#define TRACE_MBC_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
@@ -85,6 +86,12 @@ using namespace std;
     #define TRACE_CART_INFO(expr) cout << expr;
 #else
     #define TRACE_CART_INFO(expr) {}
+#endif
+
+#ifdef TRACE_MBC_ON
+    #define TRACE_MBC(expr) cout << expr;
+#else
+    #define TRACE_MBC(expr) {}
 #endif
 
 #endif

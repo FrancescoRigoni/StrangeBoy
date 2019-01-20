@@ -20,7 +20,14 @@ set (CMAKE_CXX_FLAGS "-Wall ${CMAKE_CXX_FLAGS}")
 
 set (CMAKE_CXX_FLAGS "-I/usr/local/include -I. ${CMAKE_CXX_FLAGS}")
 
-file(GLOB sources *.cpp Cpu/*.cpp Memory/*.cpp Devices/*.cpp Util/*.cpp PPU/*.cpp Screen/*.cpp)
+file(GLOB sources *.cpp 
+                  Cpu/*.cpp 
+                  Memory/*.cpp 
+                  Devices/*.cpp 
+                  Util/*.cpp 
+                  PPU/*.cpp 
+                  Screen/*.cpp 
+                  MBC/*.cpp)
 
 add_executable(GameboyEmu ${sources})
 target_link_libraries(GameboyEmu ${SDL2_LIBRARY})

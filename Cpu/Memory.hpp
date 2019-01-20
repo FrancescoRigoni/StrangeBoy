@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <unordered_map> 
 #include "Devices/IoDevice.hpp"
+#include "MBC/Mbc.hpp"
 
 using namespace std;
 
@@ -37,22 +38,18 @@ using namespace std;
 
 class Memory {
 private:
-
-    uint8_t mbc1RomBankNumber = 1;
+    Mbc *memoryBankController = 0;
 
     uint8_t *memory;
     uint8_t *bootRom;
     uint8_t *gameRom;
-
-    bool reading;
-    bool traceEnabled;
 
     unordered_map<uint16_t, IoDevice *> ioMap; 
 
 	uint8_t *getMemoryAreaForAddress(uint16_t *address);
 
 public:
-	Memory(uint8_t *bootRom, uint8_t* gameRom);
+	Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController);
 	~Memory();
 
     void registerIoDevice(uint16_t, IoDevice *);

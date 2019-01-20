@@ -24,6 +24,8 @@
 #include "Screen/Screen.hpp"
 #include "Cartridge.hpp"
 
+#include "MBC/Mbc1.hpp"
+
 using namespace std;
 using namespace std::chrono;
 
@@ -42,7 +44,6 @@ void handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-    signal(SIGSEGV, handler);
 
     atomic<bool> exit(false);
 
@@ -61,14 +62,31 @@ unsigned long getTimeMilliseconds() {
 }
 
 void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool> *exit) {
+    signal(SIGSEGV, handler);
+
     uint8_t *bootRom = readRom("roms/bootrom.bin");
     uint8_t *gameRom = readRom(romPath);
 
     Cartridge cartridge;
     CartridgeInfo *cartridgeInfo = 0;
-    cartridge.parse(gameRom, cartridgeInfo);
+    cartridge.parse(gameRom, &cartridgeInfo);
 
-    Memory memory(bootRom, gameRom);
+    Mbc *memoryBankController;
+    switch (cartridgeInfo->cartridgeType) {
+        case CART_TYPE_ROM_ONLY:
+            // Nothing to do
+            memoryBankController = 0;
+            break;
+        case CART_TYPE_ROM_MBC1:
+            memoryBankController = new Mbc1();
+            break;
+        default:
+            cerr << "Unsupported MBC " << cout8Hex(cartridgeInfo->cartridgeType) << endl;
+            return;
+        break;
+    }
+
+    Memory memory(bootRom, gameRom, memoryBankController);
     Dma dma(&memory);
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
@@ -132,6 +150,8 @@ uint8_t *readRom(const char *fileName) {
 
     return (uint8_t*)romContent;
 }
+
+
 
 
 

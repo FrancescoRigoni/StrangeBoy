@@ -6,9 +6,10 @@
 
 using namespace std;
 
-Memory::Memory(uint8_t *bootRom, uint8_t* gameRom) {
+Memory::Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController) {
     this->bootRom = bootRom;
     this->gameRom = gameRom;
+    this->memoryBankController = memoryBankController;
     memory = new uint8_t[MEMORY_SIZE];
 }
 
@@ -16,6 +17,7 @@ Memory::~Memory() {
     delete[] memory;
     delete[] bootRom;
     delete[] gameRom;
+    delete memoryBankController;
 }
 
 void Memory::registerIoDevice(uint16_t address, IoDevice *ioDevice) {
@@ -23,8 +25,6 @@ void Memory::registerIoDevice(uint16_t address, IoDevice *ioDevice) {
 }
 
 uint16_t Memory::read16(uint16_t address, bool trace) {
-    traceEnabled = trace;
-    reading = true;
     uint16_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	return (uint16_t)decodedMemory[decodedAddress] | ((uint16_t)decodedMemory[decodedAddress+1] << 8);
@@ -36,16 +36,12 @@ uint8_t Memory::read8(uint16_t address, bool trace) {
         return ioMap[address]->read8(address);
     }
 
-    traceEnabled = trace;
-    reading = true;
     uint16_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	return decodedMemory[decodedAddress];
 }
 
 void Memory::write16(uint16_t address, uint16_t value, bool trace) {
-    traceEnabled = trace;
-    reading = false;
     uint16_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = (uint8_t)(value & 0xFF);
@@ -56,19 +52,15 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
     auto ioMapping = ioMap.find(address);
     if (ioMapping != ioMap.end()) {
         ioMap[address]->write8(address, value);
-    }
-
-    if (address >= 0x2000 && address <= 0x7FFF) {
-        // MBC in progress
-        // cout << "MBC: Writing " << cout8Hex(value) << " to " << cout16Hex(address) << endl;
-        mbc1RomBankNumber = value & 0b00011111;
-        if (mbc1RomBankNumber == 0) mbc1RomBankNumber = 1;
         return;
     }
 
+    if (memoryBankController != 0) {
+        if (memoryBankController->write8(address, value)) {
+            return;
+        }
+    }
 
-    traceEnabled = trace;
-    reading = false;
     uint16_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = value;
@@ -77,8 +69,9 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
 uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
     if (*address < BOOT_ROM_SIZE && bootRomEnabled()) {
         return bootRom;
-    } else if (*address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
-        *address = (*address-ROM_BANK_SWTC_START) + (ROM_BANK_SIZE * mbc1RomBankNumber);
+    } else if (memoryBankController != 0 &&
+               *address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
+        *address = (*address-ROM_BANK_SWTC_START) + (ROM_BANK_SIZE * memoryBankController->getRomBankNumber());
         return gameRom;
     } else if (*address < VIDEO_RAM_START) {
         return gameRom;

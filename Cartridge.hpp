@@ -28,7 +28,7 @@ typedef struct {
 
 class Cartridge {
     public:
-        void parse(uint8_t*, CartridgeInfo*);
+        void parse(uint8_t*, CartridgeInfo**);
 
 };
 
