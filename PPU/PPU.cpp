@@ -80,7 +80,13 @@ void PPU::nextState() {
 
         // Set the ly, lyc coincidence bit if we are about to draw the lyc line.
         uint8_t lyc = lcdRegs->read8(LYC);
-        if (line == lyc) setBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
+        if (line == lyc) {
+            setBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
+            // Generate LCDC interrupt if the selection says so.
+            if (isBitSet(stat, STAT_INTERRUPT_SELECTION_LYC_LY_COINCIDENCE_BIT)) {
+                interruptFlags->interruptLCDC();
+            }
+        }
         else resetBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
 
         if (line < SCREEN_HEIGHT_PX) {
