@@ -143,19 +143,26 @@ void PPU::doDrawLine() {
 void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
     int8_t scrollY = lcdRegs->read8(SCY);
     int8_t scrollX = lcdRegs->read8(SCX);
-    uint16_t scrolledLine = line + scrollY;
+    uint16_t scrolledYPosition = line + scrollY;
 
     uint8_t *palette = new uint8_t[4];
     decodePaletteByte(BGP, palette);
 
     // Go on drawing the tiles pixels for this line
-    int rowInTilesMap = scrolledLine/BACKGROUND_TILE_HEIGHT_PX;
+    int rowInTilesMap = scrolledYPosition/BACKGROUND_TILE_HEIGHT_PX;
     uint16_t tileMapAddress = lcdRegs->addressForBackgroundTilesMap();
 
     for (int x = 0; x < SCREEN_WIDTH_PX; x++) {
-        uint16_t scrolledColumn = scrollX + x;
+        uint16_t scrolledXPosition = x + scrollX;
 
-        int colInTilesMap = scrolledColumn/BACKGROUND_TILE_WIDTH_PX;
+        // Column inside the tilemap is computed dividing the scrolled X position
+        // by the width of a tile.
+        // The result has to wrap around if it is bigger than the width of the
+        // tile map, we basically go back to the tile at position x=0 on the same
+        // row in the tilemap.
+        int colInTilesMap = scrolledXPosition/BACKGROUND_TILE_WIDTH_PX;
+        colInTilesMap %= BACKGROUND_TILE_MAP_ROW_SIZE_BYTES;
+
         uint16_t tileNumberAddress = tileMapAddress + 
             (rowInTilesMap*BACKGROUND_TILE_MAP_ROW_SIZE_BYTES) + 
             colInTilesMap;
@@ -163,11 +170,14 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
 
         uint16_t tileAddress = lcdRegs->addressForBackgroundTile(tileNumber);
 
-        int xInTile = scrolledColumn%BACKGROUND_TILE_WIDTH_PX;
-        int yInTile = scrolledLine%BACKGROUND_TILE_HEIGHT_PX;    // Calculate positions in tile for current px
+        // Calculate x and y positions in tile for current px
+        int xInTile = scrolledXPosition%BACKGROUND_TILE_WIDTH_PX;
+        int yInTile = scrolledYPosition%BACKGROUND_TILE_HEIGHT_PX;
 
-        uint16_t yOffsetInTile = yInTile*2;                      // Two bytes per row
-        uint8_t xBitInTileBytes = (7-xInTile);                   // msb is first pixel, lsb is last pixel
+        // Two bytes per row
+        uint16_t yOffsetInTile = yInTile*2;
+        // msb is first pixel, lsb is last pixel
+        uint8_t xBitInTileBytes = (7-xInTile);                   
 
         uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
         uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
@@ -265,7 +275,7 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
                  i != (xFlipped ? 8 : -1); 
                  i += (xFlipped ? 1 : -1)) {
 
-            if (pixelPositionInLine > 0 && 
+            if (pixelPositionInLine >= 0 && 
                 pixelPositionInLine < SCREEN_WIDTH_PX) {
 
                 uint8_t mask = 1 << i;

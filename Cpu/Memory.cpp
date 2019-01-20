@@ -55,10 +55,8 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
         return;
     }
 
-    if (memoryBankController != 0) {
-        if (memoryBankController->write8(address, value)) {
-            return;
-        }
+    if (memoryBankController->write8(address, value)) {
+        return;
     }
 
     uint16_t decodedAddress = address;
@@ -69,15 +67,18 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
 uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
     if (*address < BOOT_ROM_SIZE && bootRomEnabled()) {
         return bootRom;
-    } else if (memoryBankController != 0 &&
-               *address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
+
+    } else if (*address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
         *address = (*address-ROM_BANK_SWTC_START) + (ROM_BANK_SIZE * memoryBankController->getRomBankNumber());
         return gameRom;
+
     } else if (*address < VIDEO_RAM_START) {
         return gameRom;
+
     } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {
         *address -= INTERNAL_RAM_SIZE;
         return memory;
+        
     } else {
         return memory;
     }

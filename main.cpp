@@ -24,6 +24,7 @@
 #include "Screen/Screen.hpp"
 #include "Cartridge.hpp"
 
+#include "MBC/MbcDummy.hpp"
 #include "MBC/Mbc1.hpp"
 
 using namespace std;
@@ -75,7 +76,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     switch (cartridgeInfo->cartridgeType) {
         case CART_TYPE_ROM_ONLY:
             // Nothing to do
-            memoryBankController = 0;
+            memoryBankController = new MbcDummy();
             break;
         case CART_TYPE_ROM_MBC1:
             memoryBankController = new Mbc1();

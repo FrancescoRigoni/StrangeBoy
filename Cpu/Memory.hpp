@@ -32,7 +32,7 @@ using namespace std;
 #define ROM_BANK_SWTC_SIZE 			0x4000
 #define ROM_BANK_0_SIZE 			0x4000
 
-#define BOOT_ROM_SIZE               0x100
+#define BOOT_ROM_SIZE                0x100
 
 #define ROM_BANK_SIZE               0x4000
 
