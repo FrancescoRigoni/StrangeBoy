@@ -10,6 +10,7 @@
 #define BACKGROUND_TILE_WIDTH_PX                      8
 #define BACKGROUND_TILE_HEIGHT_PX                     8
 #define BACKGROUND_TILE_MAP_ROW_SIZE_BYTES           32
+#define BACKGROUND_TILE_MAP_COL_SIZE_BYTES           32
 #define WINDOW_TILE_WIDTH_PX                          8
 #define WINDOW_TILE_HEIGHT_PX                         8
 #define WINDOW_TILE_MAP_ROW_SIZE_BYTES               32
@@ -161,8 +162,12 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
     uint8_t *palette = new uint8_t[4];
     decodePaletteByte(BGP, palette);
 
-    // Go on drawing the tiles pixels for this line
+    // Go on drawing the tiles pixels for this line.
     int rowInTilesMap = scrolledYPosition/BACKGROUND_TILE_HEIGHT_PX;
+    // The result has to wrap around if it is bigger than the height of the
+    // tile map.
+    rowInTilesMap %= BACKGROUND_TILE_MAP_COL_SIZE_BYTES;
+
     uint16_t tileMapAddress = lcdRegs->addressForBackgroundTilesMap();
 
     for (int x = 0; x < SCREEN_WIDTH_PX; x++) {
