@@ -21,6 +21,9 @@ private:
     void doDrawLine();
 
     void decodePaletteByte(uint16_t, uint8_t *);
+    uint8_t decodePixelFromTile(uint16_t, int, int, int, int, uint8_t *);
+
+    int currentWindowLine;
 
 public:
     PPU(Memory *, LCDRegs *, InterruptFlags *, Screen *);

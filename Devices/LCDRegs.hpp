@@ -13,6 +13,8 @@
 #define SCX                 0xFF43
 #define LY                  0xFF44
 #define LYC                 0xFF45
+#define WIN_Y               0xFF4A
+#define WIN_X               0xFF4B
 
 #define LCDC_CONTROL_OP_BIT                                 7
 #define LCDC_WIN_TILE_MAP_DISPLAY_SELECT_BIT                6
@@ -41,6 +43,8 @@ private:
     int8_t scx;
     uint8_t ly = 0;
     uint8_t lyc;
+    uint8_t windowY;
+    uint8_t windowX;
 
 public:
     virtual void write8(uint16_t, uint8_t);
@@ -48,6 +52,9 @@ public:
 
     uint16_t addressForBackgroundTile(uint8_t);
     uint16_t addressForBackgroundTilesMap();
+
+    uint16_t addressForWindowTile(uint8_t);
+    uint16_t addressForWindowTilesMap();
 
     uint16_t addressForSprite(uint16_t);
     uint16_t addressForSpriteAttributeTable();

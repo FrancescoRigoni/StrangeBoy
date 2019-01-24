@@ -72,6 +72,11 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     CartridgeInfo *cartridgeInfo = 0;
     cartridge.parse(gameRom, &cartridgeInfo);
 
+    if (cartridgeInfo->isGBOrSGB != 0x00) {
+        cerr << "Unsupported Super GameBoy ROM" << endl;
+        return;
+    }
+
     Mbc *memoryBankController;
     switch (cartridgeInfo->cartridgeType) {
         case CART_TYPE_ROM_ONLY:
@@ -101,6 +106,8 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     memory.registerIoDevice(SCX, &lcdRegs);
     memory.registerIoDevice(LY, &lcdRegs);
     memory.registerIoDevice(LYC, &lcdRegs);
+    memory.registerIoDevice(WIN_X, &lcdRegs);
+    memory.registerIoDevice(WIN_Y, &lcdRegs);
     memory.registerIoDevice(IF, &interruptFlags);
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
 

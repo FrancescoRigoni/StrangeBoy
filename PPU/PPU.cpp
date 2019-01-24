@@ -10,6 +10,9 @@
 #define BACKGROUND_TILE_WIDTH_PX                      8
 #define BACKGROUND_TILE_HEIGHT_PX                     8
 #define BACKGROUND_TILE_MAP_ROW_SIZE_BYTES           32
+#define WINDOW_TILE_WIDTH_PX                          8
+#define WINDOW_TILE_HEIGHT_PX                         8
+#define WINDOW_TILE_MAP_ROW_SIZE_BYTES               32
 #define SCREEN_HEIGHT_INCLUDING_VBLANK              154
 
 #define SPRITE_WIDTH_PX                               8
@@ -31,6 +34,7 @@ PPU::PPU(Memory *memory,
     this->screen = screen;
 
     // Initial PPU state
+    currentWindowLine = 0;
     lcdRegs->stateOAMSearch();
     lcdRegs->write8(LY, 0);
 }
@@ -103,6 +107,9 @@ void PPU::nextState() {
             lcdRegs->stateVBlank();
             interruptFlags->interruptVBlank();
 
+            // Reset window draw line
+            currentWindowLine = 0;
+
             // Generate LCDC interrupt if the selection says so.
             if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_VBLANK_BIT)) {
                 interruptFlags->interruptLCDC();
@@ -125,7 +132,8 @@ void PPU::doDrawLine() {
 
     if (line < SCREEN_HEIGHT_PX) {
         uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
-        memset(pixelsForLine, sizeof(uint8_t), 0);
+        memset(pixelsForLine, 0, sizeof(uint8_t) * SCREEN_WIDTH_PX);
+
         if (lcdRegs->isBackgroundOn()) {
             drawBackgroundPixels(line, pixelsForLine);
         }
@@ -134,6 +142,11 @@ void PPU::doDrawLine() {
         }
         if (lcdRegs->isSpritesOn()) {
             drawSpritesPixels(line, pixelsForLine);
+        }
+
+        // Filter out the colors indexes
+        for (int i = 0; i < SCREEN_WIDTH_PX; i++) {
+            pixelsForLine[i] = pixelsForLine[i] & 0b11;
         }
 
         screen->pushLine(pixelsForLine);
@@ -168,33 +181,82 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
             colInTilesMap;
         uint8_t tileNumber = memory->read8(tileNumberAddress, false);
 
-        uint16_t tileAddress = lcdRegs->addressForBackgroundTile(tileNumber);
-
-        // Calculate x and y positions in tile for current px
-        int xInTile = scrolledXPosition%BACKGROUND_TILE_WIDTH_PX;
-        int yInTile = scrolledYPosition%BACKGROUND_TILE_HEIGHT_PX;
-
-        // Two bytes per row
-        uint16_t yOffsetInTile = yInTile*2;
-        // msb is first pixel, lsb is last pixel
-        uint8_t xBitInTileBytes = (7-xInTile);                   
-
-        uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
-        uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
-
-        uint8_t mask = 1 << xBitInTileBytes;
-        uint8_t msbc = ((msb & mask) >> xBitInTileBytes) << 1;
-        uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
-        uint8_t color = msbc | lsbc;
-
-        pixels[x] = palette[color];
+        pixels[x] = decodePixelFromTile(lcdRegs->addressForBackgroundTile(tileNumber),
+                                        scrolledXPosition, 
+                                        scrolledYPosition, 
+                                        BACKGROUND_TILE_WIDTH_PX, 
+                                        BACKGROUND_TILE_HEIGHT_PX, 
+                                        palette);
     }
 
     delete[] palette;
 }
 
 void PPU::drawWindowPixels(int line, uint8_t *pixels) {
-    TRACE_PPU("Window enabled" << endl);
+    int windowScreenX = lcdRegs->read8(WIN_X) - 7;
+    int windowScreenY = lcdRegs->read8(WIN_Y);
+
+    if (line < windowScreenY) {
+        return;
+    }
+
+    uint8_t *palette = new uint8_t[4];
+    decodePaletteByte(BGP, palette);
+
+    // Go on drawing the tiles pixels for this line
+    int rowInTilesMap = currentWindowLine/WINDOW_TILE_HEIGHT_PX;
+    uint16_t tileMapAddress = lcdRegs->addressForWindowTilesMap();
+
+    if (windowScreenX < 0) windowScreenX = 0;
+    for (int x = windowScreenX; x < SCREEN_WIDTH_PX; x++) {
+
+        // Column inside the tilemap is computed dividing the X position
+        // by the width of a tile.
+        int colInTilesMap = (x-windowScreenX)/WINDOW_TILE_WIDTH_PX;
+
+        uint16_t tileNumberAddress = tileMapAddress + 
+            (rowInTilesMap*WINDOW_TILE_MAP_ROW_SIZE_BYTES) + 
+            colInTilesMap;
+        uint8_t tileNumber = memory->read8(tileNumberAddress, false);
+
+        pixels[x] = decodePixelFromTile(lcdRegs->addressForWindowTile(tileNumber),
+                                        x-windowScreenX, 
+                                        currentWindowLine, 
+                                        WINDOW_TILE_WIDTH_PX, 
+                                        WINDOW_TILE_HEIGHT_PX, 
+                                        palette);
+    }
+
+    delete[] palette;
+    currentWindowLine++;
+}
+
+uint8_t PPU::decodePixelFromTile(uint16_t tileAddress, 
+                                 int x, int y, 
+                                 int tileWidth, int tileHeight, 
+                                 uint8_t *palette) {
+
+    // Calculate x and y positions in tile for current px
+    int xInTile = x%tileWidth;
+    int yInTile = y%tileHeight;
+
+    // Two bytes per row
+    uint16_t yOffsetInTile = yInTile*2;
+    // msb is first pixel, lsb is last pixel
+    uint8_t xBitInTileBytes = (7-xInTile);                   
+
+    uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
+    uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
+
+    uint8_t mask = 1 << xBitInTileBytes;
+    uint8_t msbc = ((msb & mask) >> xBitInTileBytes) << 1;
+    uint8_t lsbc = (lsb & mask) >> xBitInTileBytes;
+    uint8_t colorIndex = msbc | lsbc;
+    // Pack the color index in the palette and the actual decoded color inside the same byte
+    // 0000AABB
+    // AA is the color index
+    // BB is the decoded color
+    return (colorIndex << 2) | palette[colorIndex];
 }
 
 typedef struct {
@@ -208,6 +270,7 @@ typedef struct {
 #define SPRITE_SCREEN_X(spriteXFromAttrTable) (spriteXFromAttrTable - SPRITE_WIDTH_PX)
 #define SPRITE_SCREEN_Y(spriteYFromAttrTable) (spriteYFromAttrTable - 16)
 
+#define SPRITE_ATTRIBUTE_PRIORITY    7
 #define SPRITE_ATTRIBUTE_Y_FLIP      6
 #define SPRITE_ATTRIBUTE_X_FLIP      5
 #define SPRITE_ATTRIBUTE_PALETTE_BIT 4
@@ -295,10 +358,26 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
                 uint8_t mask = 1 << i;
                 uint8_t msbc = ((msb & mask) >> i) << 1;
                 uint8_t lsbc = (lsb & mask) >> i;
-                uint8_t color = msbc | lsbc;
+                uint8_t spriteColorIndex = msbc | lsbc;
 
-                // TODO: Handle transparent color and priority flag
-                if (color > 0) pixels[pixelPositionInLine] = palette[color];
+                if (spriteColorIndex != 0) {
+                    // The array pixels[] at this point contains colors from bg and window packed as
+                    // 0000AABB
+                    // AA is the color index inside the corresponding palette
+                    // BB is the decoded color
+                    uint8_t bgWinColorIndex = (pixels[pixelPositionInLine] & 0b1100) >> 2;
+                    // To handle priority we must not draw the sprite pixels if the color of
+                    // background + window is 1,2 or 3.
+                    if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_PRIORITY)) {
+                        // If bg or window color index is zero we overwrite it with the sprite's color
+                        if (bgWinColorIndex == 0) 
+                            pixels[pixelPositionInLine] = (spriteColorIndex << 2) | palette[spriteColorIndex];
+                    } else {
+                        // Color index 0 is transparent
+                        if (spriteColorIndex != 0) 
+                            pixels[pixelPositionInLine] = (spriteColorIndex << 2) | palette[spriteColorIndex];
+                    }
+                }
             }
 
             ++pixelPositionInLine;
