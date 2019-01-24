@@ -49,7 +49,7 @@ public:
     uint16_t addressForBackgroundTile(uint8_t);
     uint16_t addressForBackgroundTilesMap();
 
-    uint16_t addressForSprite(uint8_t);
+    uint16_t addressForSprite(uint16_t);
     uint16_t addressForSpriteAttributeTable();
 
     void stateOAMSearch();

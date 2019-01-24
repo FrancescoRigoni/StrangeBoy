@@ -25,7 +25,7 @@ void Memory::registerIoDevice(uint16_t address, IoDevice *ioDevice) {
 }
 
 uint16_t Memory::read16(uint16_t address, bool trace) {
-    uint16_t decodedAddress = address;
+    uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	return (uint16_t)decodedMemory[decodedAddress] | ((uint16_t)decodedMemory[decodedAddress+1] << 8);
 }
@@ -36,13 +36,13 @@ uint8_t Memory::read8(uint16_t address, bool trace) {
         return ioMap[address]->read8(address);
     }
 
-    uint16_t decodedAddress = address;
+    uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	return decodedMemory[decodedAddress];
 }
 
 void Memory::write16(uint16_t address, uint16_t value, bool trace) {
-    uint16_t decodedAddress = address;
+    uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = (uint8_t)(value & 0xFF);
 	decodedMemory[decodedAddress+1] = (uint8_t)((value & 0xFF00) >> 8);
@@ -59,12 +59,12 @@ void Memory::write8(uint16_t address, uint8_t value, bool trace) {
         return;
     }
 
-    uint16_t decodedAddress = address;
+    uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = value;
 }
 
-uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
+uint8_t * Memory::getMemoryAreaForAddress(uint32_t *address) {
     if (*address < BOOT_ROM_SIZE && bootRomEnabled()) {
         return bootRom;
 
@@ -78,7 +78,7 @@ uint8_t * Memory::getMemoryAreaForAddress(uint16_t *address) {
     } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {
         *address -= INTERNAL_RAM_SIZE;
         return memory;
-        
+
     } else {
         return memory;
     }

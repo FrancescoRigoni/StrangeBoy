@@ -9,6 +9,7 @@ class Mbc {
 protected:
     int romBankNumber = 1;
     int ramBankNumber;
+    bool ramEnabled = false;
 
 public:
     int getRomBankNumber() {
@@ -17,6 +18,10 @@ public:
 
     int getRamBankNumber() {
         return ramBankNumber;
+    }
+
+    bool isRamEnabled() {
+        return ramEnabled;
     }
 
     virtual bool write8(uint16_t, uint8_t) = 0;

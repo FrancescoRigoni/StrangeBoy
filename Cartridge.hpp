@@ -8,6 +8,7 @@
 
 #define CART_TYPE_ROM_ONLY              0
 #define CART_TYPE_ROM_MBC1              1
+#define CART_TYPE_ROM_MBC1_RAM_BATT     3
 
 
 typedef struct {

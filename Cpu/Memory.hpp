@@ -46,7 +46,7 @@ private:
 
     unordered_map<uint16_t, IoDevice *> ioMap; 
 
-	uint8_t *getMemoryAreaForAddress(uint16_t *address);
+	uint8_t *getMemoryAreaForAddress(uint32_t *address);
 
 public:
 	Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController);

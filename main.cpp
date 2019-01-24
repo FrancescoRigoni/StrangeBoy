@@ -79,6 +79,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
             memoryBankController = new MbcDummy();
             break;
         case CART_TYPE_ROM_MBC1:
+        case CART_TYPE_ROM_MBC1_RAM_BATT:
             memoryBankController = new Mbc1();
             break;
         default:

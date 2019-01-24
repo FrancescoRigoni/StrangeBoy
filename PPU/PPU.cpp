@@ -205,8 +205,8 @@ typedef struct {
 } SpriteAttributeEntry;
 
 #define MAX_SPRITES_PER_LINE                  10
-#define SPRITE_SCREEN_X(spriteXFromAttrTable) spriteXFromAttrTable - SPRITE_WIDTH_PX
-#define SPRITE_SCREEN_Y(spriteYFromAttrTable) spriteYFromAttrTable - 16
+#define SPRITE_SCREEN_X(spriteXFromAttrTable) (spriteXFromAttrTable - SPRITE_WIDTH_PX)
+#define SPRITE_SCREEN_Y(spriteYFromAttrTable) (spriteYFromAttrTable - 16)
 
 #define SPRITE_ATTRIBUTE_Y_FLIP      6
 #define SPRITE_ATTRIBUTE_X_FLIP      5
@@ -220,11 +220,6 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         spriteAttribute < (SPRITE_ATTRIBUTE_TABLE_START + SPRITE_ATTRIBUTE_TABLE_SIZE);
         spriteAttribute += sizeof(SpriteAttributeEntry)) {
 
-        if (spritesEntriesForLine.size() == MAX_SPRITES_PER_LINE) {
-            // Stop looking for sprites, we have enough.
-            break;
-        }
-
         SpriteAttributeEntry *entry = (SpriteAttributeEntry*) memory->getRawPointer(spriteAttribute);
         int spriteYStartOnScreen = SPRITE_SCREEN_Y(entry->yPos);
         int spriteYEndOnScreen = spriteYStartOnScreen + lcdRegs->spriteHeightPx();
@@ -235,7 +230,22 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         }
     }
 
-    // TODO: sort sprites by x coordinate.
+    // Sort sprites by x coordinate in reverse order, this way sprites with lower x
+    // are draw above sprites with higher x.
+    sort(spritesEntriesForLine.begin(), spritesEntriesForLine.end(), 
+        [ ](const SpriteAttributeEntry * lhs, const SpriteAttributeEntry * rhs )
+    {
+        return lhs->xPos > rhs->xPos;
+    });
+
+    // Decode both palettes
+    uint8_t *objPalette0 = new uint8_t[4];
+    decodePaletteByte(OBJ_PAL_0, objPalette0);
+    uint8_t *objPalette1 = new uint8_t[4];
+    decodePaletteByte(OBJ_PAL_1, objPalette1);
+
+    // Count how many sprite we drew on this line, and stop when MAX_SPRITES_PER_LINE is reached.
+    int spritesDrawn = 0;
 
     for (auto spriteAttributes : spritesEntriesForLine) {
         if (SPRITE_SCREEN_X(spriteAttributes->xPos) == 0 || 
@@ -245,29 +255,35 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
             // line are drawn.
             continue;
         }
-               
-        uint16_t spriteData = lcdRegs->addressForSprite(spriteAttributes->patternNumber);
-        uint8_t lineInSpriteData;
-
-        // Handle vertical flip
-        if (isBitClear(spriteAttributes->flags, SPRITE_ATTRIBUTE_Y_FLIP)) {
-            lineInSpriteData = lcdRegs->spriteHeightPx() - 
-                (spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line);             
-        } else {
-            lineInSpriteData = spriteAttributes->yPos - lcdRegs->spriteHeightPx() - line;
+        
+        uint16_t spriteNumber = spriteAttributes->patternNumber;
+        if (lcdRegs->spriteHeightPx() == 0x10) {
+            // In 8x16 sprite mode, the least significant bit of the
+            // sprite pattern number is ignored and treated as 0.
+            spriteNumber &= ~0x1;
         }
 
-        uint16_t addressOfLineInSpriteData = spriteData + (lineInSpriteData*2);
+        uint8_t lineInSprite = line - SPRITE_SCREEN_Y(spriteAttributes->yPos);
+
+        // Handle vertical flip
+        if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_Y_FLIP)) {
+            lineInSprite = lcdRegs->spriteHeightPx() - lineInSprite;             
+        }
+
+        // Each line of 8 px is made by two bytes (2bpp)
+        uint16_t spriteData = lcdRegs->addressForSprite(spriteNumber);
+        uint16_t addressOfLineInSpriteData = spriteData + (lineInSprite*2);
         uint8_t lsb = memory->read8(addressOfLineInSpriteData, false);
         uint8_t msb = memory->read8(addressOfLineInSpriteData+1, false);
 
         int pixelPositionInLine = SPRITE_SCREEN_X(spriteAttributes->xPos);
 
-        uint8_t *palette = new uint8_t[4];
+        // Point to the right palette
+        uint8_t *palette;
         if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_PALETTE_BIT)) 
-            decodePaletteByte(OBJ_PAL_1, palette);
+            palette = objPalette1;
         else 
-            decodePaletteByte(OBJ_PAL_0, palette);
+            palette = objPalette0;
 
         // Handle horizontal flip
         bool xFlipped = isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_X_FLIP);
@@ -275,9 +291,7 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
                  i != (xFlipped ? 8 : -1); 
                  i += (xFlipped ? 1 : -1)) {
 
-            if (pixelPositionInLine >= 0 && 
-                pixelPositionInLine < SCREEN_WIDTH_PX) {
-
+            if (pixelPositionInLine >= 0) {
                 uint8_t mask = 1 << i;
                 uint8_t msbc = ((msb & mask) >> i) << 1;
                 uint8_t lsbc = (lsb & mask) >> i;
@@ -286,14 +300,24 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
                 // TODO: Handle transparent color and priority flag
                 if (color > 0) pixels[pixelPositionInLine] = palette[color];
             }
-            if (++pixelPositionInLine > SCREEN_WIDTH_PX) {
+
+            ++pixelPositionInLine;
+
+            if (pixelPositionInLine >= SCREEN_WIDTH_PX) {
                 // Sprite goes off the screen, stop drawing it
                 break;
             }
         }
-        
-        delete[] palette;
+
+        spritesDrawn++;
+        if (spritesDrawn == MAX_SPRITES_PER_LINE) {
+            // Enough
+            break;
+        } 
     }
+
+    delete[] objPalette0;
+    delete[] objPalette1;
 }
 
 void PPU::decodePaletteByte(uint16_t address, uint8_t *palette) {

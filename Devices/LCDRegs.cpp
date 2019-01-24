@@ -84,8 +84,9 @@ uint16_t LCDRegs::addressForBackgroundTilesMap() {
     return isBitSet(lcdc, LCDC_BG_TILE_MAP_DISPLAY_SELECT_BIT) ? 0x9C00 : 0x9800;
 }
 
-uint16_t LCDRegs::addressForSprite(uint8_t spriteNumber) {
-    uint16_t spriteOffset = spriteNumber*(spriteHeightPx()*2);
+uint16_t LCDRegs::addressForSprite(uint16_t spriteNumber) {
+    // Number of the sprite * (8 rows) * (2 bytes per row (2bpp))
+    uint16_t spriteOffset = spriteNumber*(8*2);
     return SPRITE_PATTERN_TABLE_START + spriteOffset;
 }
 
