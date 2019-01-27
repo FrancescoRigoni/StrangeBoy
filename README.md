@@ -1,8 +1,8 @@
 StrangeBoy
 ====
-A Game Boy emulator. Work in progress, it runs most games fine.
-There are some PPU glitches still to be fixed.
-Sound is not supported yet.
+A Game Boy emulator. Work in progress, it runs most games fine. Although there is still an embarassing bug in Tetris.<br>
+There are some PPU glitches still to be fixed.<br>
+Sound is not supported yet.<br>
 
 ![Super Mario Land 3 - Warioland](https://github.com/FrancescoRigoni/GameBoyEmulator/blob/master/screenshots/Strangeboy%20running%20Super%20Mario%20Land%203%20-%20Warioland.png "Super Mario Land 3 - Warioland")
 
