@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (GameboyEmu)
+project (StrangeBoy)
 
 if (CMAKE_VERSION VERSION_LESS "3.1")
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -29,6 +29,6 @@ file(GLOB sources *.cpp
                   Screen/*.cpp 
                   MBC/*.cpp)
 
-add_executable(GameboyEmu ${sources})
-target_link_libraries(GameboyEmu ${SDL2_LIBRARY})
+add_executable(StrangeBoy ${sources})
+target_link_libraries(StrangeBoy ${SDL2_LIBRARY})
 
