@@ -17,7 +17,7 @@ void Screen::run() {
 
     window = SDL_CreateWindow
     (
-        "Gameboy Emulator", 
+        "StrangeBoy", 
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
         320,
@@ -94,9 +94,9 @@ void Screen::drawNextLine() {
     r.h = 2;
     for (int i = 0; i < 160; i++) {
         r.x = i*2;
-        if (pixels[i] == 0) SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
-        else if (pixels[i] == 1) SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-        else if (pixels[i] == 2) SDL_SetRenderDrawColor(renderer, 60, 60, 60, 255);
+        if (pixels[i] == 0) SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+        else if (pixels[i] == 1) SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
+        else if (pixels[i] == 2) SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
         else if (pixels[i] == 3) SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
 
         SDL_RenderFillRect(renderer, &r);
