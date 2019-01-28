@@ -907,8 +907,6 @@ void Cpu::acknowledgeInterrupts() {
     */
 }
 
-bool trace = false;
-
 void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
     do {
@@ -923,9 +921,6 @@ void Cpu::cycle(int numberOfCycles) {
             execute();
         }
 
-        // if (!memory->bootRomEnabled() && trace) {
-        //     std::this_thread::sleep_for(chrono::milliseconds(1000));
-        // }
     } while (cyclesToSpend > 0 && 
              !halted &&
              !stoppedWaitingForKey);
@@ -933,7 +928,6 @@ void Cpu::cycle(int numberOfCycles) {
 
 void Cpu::execute() {
     uint8_t opcode = memory->read8(regPC++); 
-    //if (opcode == 0xDE) trace = true;
 
     DUMP_CPU_STATUS(); 
     TRACE_CPU(cout16Hex(regPC-1) << "  :  " << cout8Hex(opcode));
