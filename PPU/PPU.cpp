@@ -335,7 +335,7 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
 
         // Handle vertical flip
         if (isBitSet(spriteAttributes->flags, SPRITE_ATTRIBUTE_Y_FLIP)) {
-            lineInSprite = lcdRegs->spriteHeightPx() - lineInSprite;             
+            lineInSprite = (lcdRegs->spriteHeightPx()-1) - lineInSprite;             
         }
 
         // Each line of 8 px is made by two bytes (2bpp)
