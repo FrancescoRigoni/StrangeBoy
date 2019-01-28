@@ -298,13 +298,13 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         }
     }
 
-    // Sort sprites by x coordinate in reverse order, this way sprites with lower x
-    // are draw above sprites with higher x.
-    sort(spritesEntriesForLine.begin(), spritesEntriesForLine.end(), 
-        [ ](const SpriteAttributeEntry * lhs, const SpriteAttributeEntry * rhs )
-    {
-        return lhs->xPos > rhs->xPos;
-    });
+    // // Sort sprites by x coordinate in reverse order, this way sprites with lower x
+    // // are draw above sprites with higher x.
+    // sort(spritesEntriesForLine.begin(), spritesEntriesForLine.end(), 
+    //     [ ](const SpriteAttributeEntry * lhs, const SpriteAttributeEntry * rhs )
+    // {
+    //     return lhs->xPos > rhs->xPos;
+    // });
 
     // Decode both palettes
     uint8_t *objPalette0 = new uint8_t[4];
@@ -316,8 +316,8 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
     int spritesDrawn = 0;
 
     for (auto spriteAttributes : spritesEntriesForLine) {
-        if (SPRITE_SCREEN_X(spriteAttributes->xPos) == 0 || 
-            SPRITE_SCREEN_X(spriteAttributes->xPos) >= SCREEN_WIDTH_PX) {
+        if (spriteAttributes->xPos == 0 || 
+            spriteAttributes->xPos >= SCREEN_WIDTH_PX + SPRITE_WIDTH_PX) {
             // TODO: According to the gameboy manual sprites on this line that fall 
             // outside of the screen can still affect the way other sprites on this 
             // line are drawn.
