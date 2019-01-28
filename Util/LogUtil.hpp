@@ -18,7 +18,7 @@ using namespace std;
 //#define TRACE_PPU_ON
 //#define TRACE_JOYPAD_ON
 //#define TRACE_DMA_ON
-//#define TRACE_SCREEN_ON
+#define TRACE_SCREEN_ON
 //#define TRACE_CART_INFO_ON
 #define TRACE_MBC_ON
 

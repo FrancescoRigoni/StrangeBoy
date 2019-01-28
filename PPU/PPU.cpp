@@ -95,7 +95,7 @@ void PPU::nextState() {
         else resetBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
 
         if (line < SCREEN_HEIGHT_PX) {
-            // We are still drawing inside the visible screen.
+            // We are drawing inside the visible screen.
             lcdRegs->stateOAMSearch();
 
             // Generate LCDC interrupt if the selection says so.

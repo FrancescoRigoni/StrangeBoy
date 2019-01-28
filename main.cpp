@@ -114,7 +114,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
-    int fpsFrequency = 60*4;
+    int fpsFrequency = 60;
     unsigned long msRefreshPeriod = 1000 / fpsFrequency;
 
     // Give some time to the screen window to display
@@ -129,7 +129,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
             dma.cycle(cycles);
             cpu.cycle(cycles);
             ppu.nextState();
-        } while (lcdRegs.read8(LY) != 0);
+        } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
         int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;
