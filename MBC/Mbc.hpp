@@ -8,7 +8,7 @@
 class Mbc {
 protected:
     int romBankNumber = 1;
-    int ramBankNumber;
+    int ramBankNumber = 0;
     bool ramEnabled = false;
 
 public:

@@ -12,7 +12,7 @@
 
 
 typedef struct {
-    uint8_t gameTitle[15];
+    char gameTitle[15];
     uint8_t colorGameBoy;
     uint8_t licenseeCodeHigh;
     uint8_t licenseeCodeLow;

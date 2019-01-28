@@ -6,10 +6,11 @@
 
 using namespace std;
 
-Memory::Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController) {
+Memory::Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController, PersistentRAM *persistentRAM) {
     this->bootRom = bootRom;
     this->gameRom = gameRom;
     this->memoryBankController = memoryBankController;
+    this->persistentRAM = persistentRAM;
     memory = new uint8_t[MEMORY_SIZE];
 }
 
@@ -18,6 +19,7 @@ Memory::~Memory() {
     delete[] bootRom;
     delete[] gameRom;
     delete memoryBankController;
+    delete persistentRAM;
 }
 
 void Memory::registerIoDevice(uint16_t address, IoDevice *ioDevice) {
@@ -74,6 +76,10 @@ uint8_t * Memory::getMemoryAreaForAddress(uint32_t *address) {
 
     } else if (*address < VIDEO_RAM_START) {
         return gameRom;
+
+    } else if (*address >= RAM_BANK_SWTC_START && *address < (RAM_BANK_SWTC_START + RAM_BANK_SWTC_SIZE)) {
+        *address -= RAM_BANK_SWTC_START;
+        return persistentRAM->getRamBank(memoryBankController->getRamBankNumber());
 
     } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {
         *address -= INTERNAL_RAM_SIZE;

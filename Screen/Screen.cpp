@@ -7,7 +7,7 @@
 #define SCREEN_WIDTH_PX                             160
 
 #define TOO_MANY_LINES_QUEUED          SCREEN_HEIGHT_PX
-#define RENDER_SCALE                               3.0f
+#define RENDER_SCALE                               2.5f
 
 #define TILE_WIDTH_PX                                 8
 #define TILE_HEIGHT_PX                                8

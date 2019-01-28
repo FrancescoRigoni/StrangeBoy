@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <unordered_map> 
+#include "Cpu/PersistentRAM.hpp"
 #include "Devices/IoDevice.hpp"
 #include "MBC/Mbc.hpp"
 
@@ -35,10 +36,12 @@ using namespace std;
 #define BOOT_ROM_SIZE                0x100
 
 #define ROM_BANK_SIZE               0x4000
+#define RAM_BANK_SIZE               0x2000
 
 class Memory {
 private:
     Mbc *memoryBankController = 0;
+    PersistentRAM *persistentRAM = 0;
 
     uint8_t *memory;
     uint8_t *bootRom;
@@ -49,7 +52,7 @@ private:
 	uint8_t *getMemoryAreaForAddress(uint32_t *address);
 
 public:
-	Memory(uint8_t *bootRom, uint8_t* gameRom, Mbc *memoryBankController);
+	Memory(uint8_t *, uint8_t*, Mbc*, PersistentRAM*);
 	~Memory();
 
     void registerIoDevice(uint16_t, IoDevice *);

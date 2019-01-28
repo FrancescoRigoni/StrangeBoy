@@ -14,6 +14,7 @@
 
 #include "Devices/Io.hpp"
 #include "Cpu/Memory.hpp"
+#include "Cpu/PersistentRAM.hpp"
 #include "PPU/PPU.hpp"
 #include "Cpu/Cpu.hpp"
 #include "Devices/Joypad.hpp"
@@ -69,6 +70,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     uint8_t *bootRom = readRom("roms/bootrom.bin");
     uint8_t *gameRom = readRom(romPath);
 
+    // Read cartridge header
     Cartridge cartridge;
     CartridgeInfo *cartridgeInfo = 0;
     cartridge.parse(gameRom, &cartridgeInfo);
@@ -78,6 +80,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
         return;
     }
 
+    // Init Memory Bank Controller
     Mbc *memoryBankController;
     switch (cartridgeInfo->cartridgeType) {
         case CART_TYPE_ROM_ONLY:
@@ -94,7 +97,10 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
         break;
     }
 
-    Memory memory(bootRom, gameRom, memoryBankController);
+    // Init persistent RAM
+    PersistentRAM *persistentRAM = new PersistentRAM(cartridgeInfo->gameTitle);
+
+    Memory memory(bootRom, gameRom, memoryBankController, persistentRAM);
     Dma dma(&memory);
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
