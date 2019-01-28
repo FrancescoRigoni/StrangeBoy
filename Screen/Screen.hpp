@@ -25,7 +25,9 @@ private:
     condition_variable zeroLinesCondition;
     condition_variable tooManyLinesCondition;
     queue<uint8_t *> linesQueue;
+    
     void drawNextLine();
+    bool pollJoypadEvent();
 
 public:
     Screen(Joypad *);
