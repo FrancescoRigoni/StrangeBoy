@@ -184,7 +184,7 @@ void PPU::drawBackgroundPixels(int line, uint8_t *pixels) {
         uint16_t tileNumberAddress = tileMapAddress + 
             (rowInTilesMap*BACKGROUND_TILE_MAP_ROW_SIZE_BYTES) + 
             colInTilesMap;
-        uint8_t tileNumber = memory->read8(tileNumberAddress, false);
+        uint8_t tileNumber = memory->read8(tileNumberAddress);
 
         pixels[x] = decodePixelFromTile(lcdRegs->addressForBackgroundTile(tileNumber),
                                         scrolledXPosition, 
@@ -222,7 +222,7 @@ void PPU::drawWindowPixels(int line, uint8_t *pixels) {
         uint16_t tileNumberAddress = tileMapAddress + 
             (rowInTilesMap*WINDOW_TILE_MAP_ROW_SIZE_BYTES) + 
             colInTilesMap;
-        uint8_t tileNumber = memory->read8(tileNumberAddress, false);
+        uint8_t tileNumber = memory->read8(tileNumberAddress);
 
         pixels[x] = decodePixelFromTile(lcdRegs->addressForWindowTile(tileNumber),
                                         x-windowScreenX, 
@@ -250,8 +250,8 @@ uint8_t PPU::decodePixelFromTile(uint16_t tileAddress,
     // msb is first pixel, lsb is last pixel
     uint8_t xBitInTileBytes = (7-xInTile);                   
 
-    uint8_t lsb = memory->read8(tileAddress+yOffsetInTile, false);
-    uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1, false);
+    uint8_t lsb = memory->read8(tileAddress+yOffsetInTile);
+    uint8_t msb = memory->read8(tileAddress+yOffsetInTile+1);
 
     uint8_t mask = 1 << xBitInTileBytes;
     uint8_t msbc = ((msb & mask) >> xBitInTileBytes) << 1;
@@ -341,8 +341,8 @@ void PPU::drawSpritesPixels(int line, uint8_t *pixels) {
         // Each line of 8 px is made by two bytes (2bpp)
         uint16_t spriteData = lcdRegs->addressForSprite(spriteNumber);
         uint16_t addressOfLineInSpriteData = spriteData + (lineInSprite*2);
-        uint8_t lsb = memory->read8(addressOfLineInSpriteData, false);
-        uint8_t msb = memory->read8(addressOfLineInSpriteData+1, false);
+        uint8_t lsb = memory->read8(addressOfLineInSpriteData);
+        uint8_t msb = memory->read8(addressOfLineInSpriteData+1);
 
         int pixelPositionInLine = SPRITE_SCREEN_X(spriteAttributes->xPos);
 

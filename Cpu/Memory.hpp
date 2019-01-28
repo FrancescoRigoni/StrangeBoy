@@ -54,11 +54,11 @@ public:
 
     void registerIoDevice(uint16_t, IoDevice *);
 
-	uint16_t read16(uint16_t address, bool trace = true);
-	uint8_t read8(uint16_t address, bool trace = true);
+	uint16_t read16(uint16_t address);
+	uint8_t read8(uint16_t address);
 
-	void write16(uint16_t address, uint16_t value, bool trace = true);
-	void write8(uint16_t address, uint8_t value, bool trace = true);
+	void write16(uint16_t address, uint16_t value);
+	void write8(uint16_t address, uint8_t value);
 
     bool bootRomEnabled();
 

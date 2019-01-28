@@ -22,7 +22,7 @@ void Dma::cycle(int cycles) {
     if (cpuCyclesLeftForTransfer <= 0) return;
 
     for (int availableCycles = cycles; availableCycles > 0; availableCycles--) {
-        memory->write8(currentDestinationAddress++, memory->read8(currentSourceAddress++, false), false);
+        memory->write8(currentDestinationAddress++, memory->read8(currentSourceAddress++));
         cpuCyclesLeftForTransfer--;
 
         if (currentDestinationAddress == (OAM_RAM_START + OAM_RAM_SIZE)) {
