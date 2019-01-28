@@ -4,7 +4,6 @@
 
 #define SERIAL_TX_DATA		0xFF01
 #define SERIAL_IO_CTRL		0xFF02
-#define DIV					0xFF04
 #define TIMA				0xFF05
 #define TMA                 0xFF06
 #define TAC					0xFF07

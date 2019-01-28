@@ -20,6 +20,7 @@
 #include "Devices/Dma.hpp"
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
+#include "Devices/DivReg.hpp"
 #include "Util/LogUtil.hpp"
 #include "Screen/Screen.hpp"
 #include "Cartridge.hpp"
@@ -97,6 +98,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     Dma dma(&memory);
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
+    DivReg divReg;
 
     memory.registerIoDevice(P1, joypad);
     memory.registerIoDevice(DMA, &dma);
@@ -110,6 +112,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     memory.registerIoDevice(WIN_Y, &lcdRegs);
     memory.registerIoDevice(IF, &interruptFlags);
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
+    memory.registerIoDevice(DIV_REG, &divReg);
 
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
@@ -129,6 +132,7 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
             dma.cycle(cycles);
             cpu.cycle(cycles);
             ppu.nextState();
+            divReg.increment();
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
