@@ -14,13 +14,7 @@
 
 #define DRAW_TILES_GRID false
 
-Screen::Screen(Joypad *joypad) {
-    this->joypad = joypad;
-}
-
-void Screen::run() {
-    SDL_Init(SDL_INIT_VIDEO);
-
+void Screen::init() {
     window = SDL_CreateWindow
     (
         "StrangeBoy", 
@@ -37,15 +31,15 @@ void Screen::run() {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
+}
 
-    bool isquit = false;
-    while (!isquit) {
-        if (pollJoypadEvent()) return;
-        drawNextLine();
-    }
-
+void Screen::quit() {
     SDL_DestroyWindow(window);
     SDL_Quit();
+}
+
+void Screen::run() {
+    drawNextLine();
 }
 
 void Screen::drawNextLine() {
@@ -110,50 +104,4 @@ uint8_t *Screen::popLine() {
     uint8_t *nextLine = linesQueue.front();
     linesQueue.pop();
     return nextLine;
-}
-
-bool Screen::pollJoypadEvent() {
-    SDL_Event event;
-    if (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            return true;
-        } else if (event.type == SDL_KEYDOWN) {
-            if(event.key.keysym.sym == SDLK_a) {
-                joypad->buttonA = true;
-            } else if(event.key.keysym.sym == SDLK_z) {
-                joypad->buttonB = true;
-            } else if(event.key.keysym.sym == SDLK_s) {
-                joypad->buttonStart = true;
-            } else if(event.key.keysym.sym == SDLK_x) {   
-                joypad->buttonSelect = true;
-            } else if(event.key.keysym.sym == SDLK_UP) {
-                joypad->buttonUp = true;
-            } else if(event.key.keysym.sym == SDLK_DOWN) {
-                joypad->buttonDown = true;
-            } else if(event.key.keysym.sym == SDLK_LEFT) {
-                joypad->buttonLeft = true;
-            } else if(event.key.keysym.sym == SDLK_RIGHT) {
-                joypad->buttonRight = true;
-            }
-        } else if (event.type == SDL_KEYUP) {
-            if(event.key.keysym.sym == SDLK_a) {
-                joypad->buttonA = false;
-            } else if(event.key.keysym.sym == SDLK_z) {
-                joypad->buttonB = false;
-            } else if(event.key.keysym.sym == SDLK_s) {
-                joypad->buttonStart = false;
-            } else if(event.key.keysym.sym == SDLK_x) { 
-                joypad->buttonSelect = false;  
-            } else if(event.key.keysym.sym == SDLK_UP) {
-                joypad->buttonUp = false;
-            } else if(event.key.keysym.sym == SDLK_DOWN) {
-                joypad->buttonDown = false;
-            } else if(event.key.keysym.sym == SDLK_LEFT) {
-                joypad->buttonLeft = false;
-            } else if(event.key.keysym.sym == SDLK_RIGHT) {
-                joypad->buttonRight = false;
-            }
-        }
-    }
-    return false;
 }

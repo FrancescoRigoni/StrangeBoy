@@ -17,17 +17,17 @@
 #include "Cpu/PersistentRAM.hpp"
 #include "PPU/PPU.hpp"
 #include "Cpu/Cpu.hpp"
-#include "Devices/Joypad.hpp"
 #include "Devices/Dma.hpp"
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
 #include "Util/LogUtil.hpp"
-#include "Screen/Screen.hpp"
 #include "Cartridge.hpp"
 
 #include "MBC/MbcDummy.hpp"
 #include "MBC/Mbc1.hpp"
+
+#include "UI.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -47,13 +47,11 @@ void handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-
     atomic<bool> exit(false);
 
-    Joypad joypad;
-    Screen screen(&joypad);
-    thread gameboyThread(runGameBoy, argv[1], &screen, &joypad, &exit);
-    screen.run();
+    UI ui;
+    thread gameboyThread(runGameBoy, argv[1], ui.getScreen(), ui.getJoypad(), &exit);
+    ui.run();
 
     exit = true;
     gameboyThread.join();

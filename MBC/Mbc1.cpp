@@ -34,7 +34,7 @@ bool Mbc1::write8(uint16_t address, uint8_t value) {
             romMode = false;
         }
         else {
-            TRACE_MBC("Writing illegal value into MBC1 bank mode selection!" << endl);
+            TRACE_MBC("Writing illegal value into MBC1 bank mode selection! " << cout8Hex(value) << endl);
         }
         return true;
 

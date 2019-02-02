@@ -9,14 +9,10 @@
 #include <condition_variable>
 #include <functional>
 
-#include "Devices/Joypad.hpp"
-
 using namespace std;
 
 class Screen {
 private:
-    Joypad *joypad;
-
     SDL_Window* window;
     SDL_Renderer* renderer;
     int currentScanLine = 0;
@@ -25,15 +21,16 @@ private:
     condition_variable zeroLinesCondition;
     condition_variable tooManyLinesCondition;
     queue<uint8_t *> linesQueue;
-    
+
     void drawNextLine();
-    bool pollJoypadEvent();
 
 public:
-    Screen(Joypad *);
     void pushLine(uint8_t *);
     uint8_t *popLine();
     void run();
+
+    void init();
+    void quit();
 };
 
 #endif
