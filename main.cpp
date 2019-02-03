@@ -22,6 +22,7 @@
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
 #include "Devices/SoundChannel1.hpp"
+#include "Devices/SoundChannel2.hpp"
 
 #include "Util/LogUtil.hpp"
 #include "Cartridge.hpp"
@@ -96,8 +97,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     InterruptFlags interruptFlags;
     DivReg divReg;
     SoundChannel1 soundChannel1;
+    SoundChannel2 soundChannel2;
 
-    APU apu(&soundChannel1, sound);
+    APU apu(&soundChannel1, &soundChannel2, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
@@ -121,6 +123,11 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     memory.registerIoDevice(NR_13_SOUND_MODE_FREQ_LO, &soundChannel1);
     memory.registerIoDevice(NR_14_SOUND_MODE_FREQ_HI, &soundChannel1);
 
+    memory.registerIoDevice(NR_21_SOUND_MODE_LENGTH_DUTY, &soundChannel2);
+    memory.registerIoDevice(NR_22_SOUND_MODE_ENVELOPE, &soundChannel2);
+    memory.registerIoDevice(NR_23_SOUND_MODE_FREQ_LO, &soundChannel2);
+    memory.registerIoDevice(NR_24_SOUND_MODE_FREQ_HI, &soundChannel2);
+
     memory.registerIoDevice(NR_50_CHANNEL_CONTROL, &apu);
     memory.registerIoDevice(NR_51_OUTPUT_SELECTION, &apu);
     memory.registerIoDevice(NR_52_SOUND_ON_OFF, &apu);
@@ -141,6 +148,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             cpu.cycle(cycles);
             ppu.nextState();
             divReg.increment();
+
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
         apu.step();

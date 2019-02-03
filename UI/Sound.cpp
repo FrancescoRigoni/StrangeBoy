@@ -18,28 +18,68 @@ void Sound::init() {
     AudioSettings.freq = SamplesPerSecond;
     AudioSettings.format = AUDIO_S16;
     AudioSettings.channels = 2;
-    AudioSettings.samples = 800;
+    AudioSettings.samples = 4096;
+    AudioSettings.padding = 0;
+    AudioSettings.silence = 0;
     //AudioSettings.callback = &SDLAudioCallback;
 
     SDL_OpenAudio(&AudioSettings, 0);
 
 }
 
+#define INPUT_MASTER_CLOCK_HZ   4194304
+
 void Sound::run() {
-    struct AudioBuffer *channel1Buffer = popBuffer();
-    if (channel1Buffer == 0) return;
+    // int timeSinceLastStep = 8;
 
-    cout << "Playing buffer" << endl;
+    // // A timer generates an output clock every N input clocks, where N is the timer's period.
+    // // This is the wave timer's frequency in Hz.
+    // int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / 2000;
+    // float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
 
-    if (SDL_GetQueuedAudioSize(1) > 800*60) {
-        return;
+    // // Figure out how many samples to generate
+    // float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
+    // float samplesToGenerate = timeSinceLastStep * samplesPerMillisecond;
+    // float sampleIntervalMs = timeSinceLastStep / samplesToGenerate;
+
+    // struct AudioBuffer *buffer = new struct AudioBuffer;
+    // buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
+    // buffer->buffer = new uint16_t[samplesToGenerate * 2];
+    // uint16_t *bufferPointer = buffer->buffer;
+
+    // int16_t volume = 1000;
+
+    // for (int sample = 0; sample < samplesToGenerate; sample += 1) {
+    //     float currentMillisecond = sampleIntervalMs * (float)sample;
+    //     float frequencyTimerTicks = frequencyTimerClocksPerMillisecond * currentMillisecond;
+    //     // Each waveform takes 8 ticks
+    //     int frequencyTimerTicksModulo8 = (int)frequencyTimerTicks % 8;
+
+    //     switch (frequencyTimerTicksModulo8) {
+    //         case 0: *bufferPointer++ = volume; *bufferPointer++ = 0; break;
+    //         case 1: *bufferPointer++ =      0; *bufferPointer++ =      0; break;
+    //         case 2: *bufferPointer++ =      0; *bufferPointer++ =      0; break;
+    //         case 3: *bufferPointer++ =      0; *bufferPointer++ =      0; break;
+    //         case 4: *bufferPointer++ =      0; *bufferPointer++ =      0; break;
+    //         case 5: *bufferPointer++ = volume; *bufferPointer++ = 0; break;
+    //         case 6: *bufferPointer++ = volume; *bufferPointer++ = 0; break;
+    //         case 7: *bufferPointer++ = volume; *bufferPointer++ = 0; break;
+    //     }
+    // }
+
+
+    struct AudioBuffer *buffer = popBuffer();
+    if (buffer == 0) return;
+
+    if (SDL_GetQueuedAudioSize(1) == 0) {
+        cout << "No audio queued" << endl;
     }
 
-    SDL_QueueAudio(1, channel1Buffer->buffer, channel1Buffer->size);
+    SDL_QueueAudio(1, buffer->buffer, buffer->size);
     SDL_PauseAudio(0);
 
-    delete[] channel1Buffer->buffer;
-    delete channel1Buffer;
+    delete[] buffer->buffer;
+    delete buffer;
 
 
 
@@ -59,7 +99,8 @@ void Sound::run() {
     // int BytesToWrite = 800 * BytesPerSample;
 
     // int queuedBytes = SDL_GetQueuedAudioSize(1);
-    // if (queuedBytes > BytesToWrite*2) return;
+    // cout << "Queued: " << queuedBytes << endl;
+    // // if (queuedBytes > BytesToWrite*2) return;
 
     // void *SoundBuffer = malloc(BytesToWrite);
     // int16_t *SampleOut = (int16_t *)SoundBuffer;
