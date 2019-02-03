@@ -7,11 +7,6 @@
 #define TIMA				0xFF05
 #define TMA                 0xFF06
 #define TAC					0xFF07
-#define NR_10				0xFF10
-#define NR_11				0xFF11
-#define NR_12				0xFF12
-#define NR_13				0xFF13
-#define NR_14				0xFF14
 #define NR_21               0xFF16
 #define NR_22               0xFF17
 #define NR_23               0xFF18
@@ -25,9 +20,6 @@
 #define NR_42               0xFF21 
 #define NR_43               0xFF22
 #define NR_44               0xFF23
-#define NR_50               0xFF24
-#define NR_51               0xFF25
-#define NR_52               0xFF26
 #define WAVE_RAM            0xFF30
 #define BGP                 0xFF47
 #define OBJ_PAL_0           0xFF48

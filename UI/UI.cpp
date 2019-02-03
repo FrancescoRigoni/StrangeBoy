@@ -1,5 +1,5 @@
 
-#include "UI.hpp"
+#include "UI/UI.hpp"
 
 Screen *UI::getScreen() {
     return &screen;
@@ -9,13 +9,19 @@ Joypad *UI::getJoypad() {
     return &joypad;
 }
 
+Sound *UI::getSound() {
+    return &sound;
+}
+
 void UI::run() {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
     screen.init();
+    sound.init();
 
     while (!pollEvent()) {
         screen.run();
+        sound.run();
     }
 
     screen.quit();

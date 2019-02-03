@@ -2,7 +2,7 @@
 #include "Devices/Io.hpp"
 #include "Cpu/Memory.hpp"
 #include "Util/ByteUtil.hpp"
-#include "Screen/Screen.hpp"
+#include "UI/Screen.hpp"
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 

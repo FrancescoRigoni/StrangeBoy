@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "Screen/Screen.hpp"
+#include "UI/Screen.hpp"
 #include "Util/LogUtil.hpp"
 
 #define SCREEN_HEIGHT_PX                            144

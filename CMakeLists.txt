@@ -26,7 +26,7 @@ file(GLOB sources *.cpp
                   Devices/*.cpp 
                   Util/*.cpp 
                   PPU/*.cpp 
-                  Screen/*.cpp 
+                  UI/*.cpp
                   MBC/*.cpp)
 
 add_executable(StrangeBoy ${sources})

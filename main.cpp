@@ -7,8 +7,6 @@
 #include <algorithm>
 
 #include <stdio.h>
-#include <execinfo.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -16,41 +14,36 @@
 #include "Cpu/Memory.hpp"
 #include "Cpu/PersistentRAM.hpp"
 #include "PPU/PPU.hpp"
+#include "Devices/APU.hpp"
 #include "Cpu/Cpu.hpp"
+
 #include "Devices/Dma.hpp"
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
+#include "Devices/SoundChannel1.hpp"
+
 #include "Util/LogUtil.hpp"
 #include "Cartridge.hpp"
 
 #include "MBC/MbcDummy.hpp"
 #include "MBC/Mbc1.hpp"
 
-#include "UI.hpp"
+#include "UI/UI.hpp"
+#include "UI/Screen.hpp"
+#include "UI/Sound.hpp"
 
 using namespace std;
 using namespace std::chrono;
 
 uint8_t *readRom(const char *);
-void runGameBoy(const char *romPath, Screen *, Joypad *, atomic<bool> *);
-
-void handler(int sig) {
-  void *array[10];
-  size_t size;
-
-  // get void*'s for all entries on the stack
-  size = backtrace(array, 10);
-
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-  exit(1);
-}
+void runGameBoy(const char *romPath, Screen *, Sound *, Joypad *, atomic<bool> *);
 
 int main(int argc, char **argv) {
     atomic<bool> exit(false);
 
     UI ui;
-    thread gameboyThread(runGameBoy, argv[1], ui.getScreen(), ui.getJoypad(), &exit);
+    thread gameboyThread(runGameBoy, argv[1], ui.getScreen(), ui.getSound(), ui.getJoypad(), &exit);
     ui.run();
 
     exit = true;
@@ -62,8 +55,7 @@ unsigned long getTimeMilliseconds() {
         (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool> *exit) {
-    signal(SIGSEGV, handler);
+void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypad, atomic<bool> *exit) {
 
     uint8_t *bootRom = readRom("roms/bootrom.bin");
     uint8_t *gameRom = readRom(romPath);
@@ -103,6 +95,11 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
     DivReg divReg;
+    SoundChannel1 soundChannel1;
+
+    APU apu(&soundChannel1, sound);
+    PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
+    Cpu cpu(&memory, &interruptFlags);
 
     memory.registerIoDevice(P1, joypad);
     memory.registerIoDevice(DMA, &dma);
@@ -118,8 +115,15 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
     memory.registerIoDevice(DIV_REG, &divReg);
 
-    PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
-    Cpu cpu(&memory, &interruptFlags);
+    memory.registerIoDevice(NR_10_SOUND_MODE_SWEEP, &soundChannel1);
+    memory.registerIoDevice(NR_11_SOUND_MODE_LENGTH_DUTY, &soundChannel1);
+    memory.registerIoDevice(NR_12_SOUND_MODE_ENVELOPE, &soundChannel1);
+    memory.registerIoDevice(NR_13_SOUND_MODE_FREQ_LO, &soundChannel1);
+    memory.registerIoDevice(NR_14_SOUND_MODE_FREQ_HI, &soundChannel1);
+
+    memory.registerIoDevice(NR_50_CHANNEL_CONTROL, &apu);
+    memory.registerIoDevice(NR_51_OUTPUT_SELECTION, &apu);
+    memory.registerIoDevice(NR_52_SOUND_ON_OFF, &apu);
 
     int fpsFrequency = 60;
     unsigned long msRefreshPeriod = 1000 / fpsFrequency;
@@ -138,6 +142,8 @@ void runGameBoy(const char *romPath, Screen *screen, Joypad *joypad, atomic<bool
             ppu.nextState();
             divReg.increment();
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
+
+        apu.step();
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
         int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;
