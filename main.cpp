@@ -21,8 +21,7 @@
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
-#include "Devices/SoundChannel1.hpp"
-#include "Devices/SoundChannel2.hpp"
+#include "Devices/SoundChannelSquareWave.hpp"
 
 #include "Util/LogUtil.hpp"
 #include "Cartridge.hpp"
@@ -68,7 +67,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
     if (cartridgeInfo->isGBOrSGB != 0x00) {
         cerr << "Unsupported Super GameBoy ROM" << endl;
-        return;
+        //return;
     }
 
     // Init Memory Bank Controller
@@ -96,8 +95,18 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
     DivReg divReg;
-    SoundChannel1 soundChannel1;
-    SoundChannel2 soundChannel2;
+
+    SoundChannelSquareWave soundChannel1(NR_10_SOUND_MODE_SWEEP, 
+                                         NR_11_SOUND_MODE_LENGTH_DUTY,
+                                         NR_12_SOUND_MODE_ENVELOPE, 
+                                         NR_13_SOUND_MODE_FREQ_LO, 
+                                         NR_14_SOUND_MODE_FREQ_HI);
+
+    SoundChannelSquareWave soundChannel2(0,
+                                         NR_21_SOUND_MODE_LENGTH_DUTY,
+                                         NR_22_SOUND_MODE_ENVELOPE,
+                                         NR_23_SOUND_MODE_FREQ_LO,
+                                         NR_24_SOUND_MODE_FREQ_HI);
 
     APU apu(&soundChannel1, &soundChannel2, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
@@ -151,7 +160,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
-        apu.step();
+        apu.generateOneBuffer();
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
         int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;

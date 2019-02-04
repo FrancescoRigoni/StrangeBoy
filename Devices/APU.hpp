@@ -5,8 +5,7 @@
 #include <chrono>
 
 #include "UI/Sound.hpp"
-#include "Devices/SoundChannel1.hpp"
-#include "Devices/SoundChannel2.hpp"
+#include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/IoDevice.hpp"
 
 #define NR_50_CHANNEL_CONTROL            0xFF24
@@ -22,20 +21,17 @@ private:
     uint8_t soundOnOff;
 
     Sound *sound;
-    SoundChannel1 *soundChannel1;
-    SoundChannel2 *soundChannel2;
+    SoundChannelSquareWave *soundChannel1;
+    SoundChannelSquareWave *soundChannel2;
 
-    struct AudioBuffer *generateChannel1(long);
-    struct AudioBuffer *generateChannel2(long);
-
+    struct AudioBuffer *generateSquareWaveBuffer(SoundChannelSquareWave *, long);
     uint16_t volumeToOutputVolume(uint16_t);
-
-    void generateSquareWave(uint16_t *buffer, int volume, float frequencyTimerTicks, int duty);
+    void generateSquareWaveSample(uint16_t *, int, float, int);
 
 public:
-    APU(SoundChannel1 *, SoundChannel2 *, Sound *);
+    APU(SoundChannelSquareWave *, SoundChannelSquareWave *, Sound *);
 
-    void step();
+    void generateOneBuffer();
 
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);

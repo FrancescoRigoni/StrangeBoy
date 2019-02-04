@@ -26,7 +26,7 @@
 using namespace std;
 using namespace std::chrono;
 
-APU::APU(SoundChannel1 *soundChannel1, SoundChannel2 *soundChannel2, Sound *sound) {
+APU::APU(SoundChannelSquareWave *soundChannel1, SoundChannelSquareWave *soundChannel2, Sound *sound) {
     this->sound = sound;
     this->soundChannel1 = soundChannel1;
     this->soundChannel2 = soundChannel2;
@@ -34,97 +34,75 @@ APU::APU(SoundChannel1 *soundChannel1, SoundChannel2 *soundChannel2, Sound *soun
     lastStepTime = TIME_MS;
 }
 
-float frequencyTimer1Ticks = 0;
-float frequencyTimer2Ticks = 0;
+void APU::generateOneBuffer() {
+    long millisecondsSinceLastBuffer = TIME_MS - lastStepTime;
+    float internalLengthCounterDecrementsPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
+    int internalLengthCounterDecrements = internalLengthCounterDecrementsPerMilliseconds * millisecondsSinceLastBuffer;
+    soundChannel1->decrementInternalLengthCounter(internalLengthCounterDecrements);
+    soundChannel2->decrementInternalLengthCounter(internalLengthCounterDecrements);
 
-int internalFrequencyTimer1Period = 0;
-int internalFrequencyTimer2Period = 0;
+    struct AudioBuffer *channel1Buffer = generateSquareWaveBuffer(soundChannel1, millisecondsSinceLastBuffer);
+    struct AudioBuffer *channel2Buffer = generateSquareWaveBuffer(soundChannel2, millisecondsSinceLastBuffer);
 
-struct AudioBuffer * APU::generateChannel1(long timeSinceLastStep) {
-    int frequency = soundChannel1->getFrequency();
+    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
+    float samplesToGenerate = millisecondsSinceLastBuffer * samplesPerMillisecond;
+    int samplesInBuffer = samplesToGenerate * 2;
+
+    struct AudioBuffer *finalBuffer;
+    finalBuffer = new struct AudioBuffer;
+    finalBuffer->size = samplesInBuffer * sizeof(uint16_t);
+    finalBuffer->buffer = new uint16_t[samplesInBuffer];
+
+    for (int i = 0; i < samplesInBuffer; i++) {
+        uint16_t sampleFrom1 = channel1Buffer != 0 ? channel1Buffer->buffer[i] : 0;
+        uint16_t sampleFrom2 = channel2Buffer != 0 ? channel2Buffer->buffer[i] : 0;
+
+        finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2);
+    }
+
+    delete[] channel1Buffer;
+    delete[] channel2Buffer;
+
+    sound->pushBuffer(finalBuffer);
+
+    lastStepTime = TIME_MS;
+}
+
+struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *squareWaveChannel, long bufferDurationMilliseconds) {
+    int frequency = squareWaveChannel->getFrequency();
     if (frequency == 0) {
         return 0;
     }
-    // if (soundChannel1->getInternalLengthCounter() == 0) {
-    //     return 0;
-    // }
-
-    //if (isBitClear(soundChannel1->read8(NR_14_SOUND_MODE_FREQ_HI), 7)) return 0;
 
     // A timer generates an output clock every N input clocks, where N is the timer's period.
-    // This is the wave timer's frequency in Hz.
-    if (internalFrequencyTimer1Period != soundChannel1->getInternalFrequencyTimerPeriod()) {
-        frequencyTimer1Ticks = 0;
-        internalFrequencyTimer1Period = soundChannel1->getInternalFrequencyTimerPeriod();
-    }
-
-    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / internalFrequencyTimer1Period;
+    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerPeriod();
     float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
 
     // Figure out how many samples to generate
     float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-    float samplesToGenerate = timeSinceLastStep * samplesPerMillisecond;
-    float sampleIntervalMs = timeSinceLastStep / samplesToGenerate;
+    float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
+    float sampleIntervalMs = bufferDurationMilliseconds / samplesToGenerate;
 
     struct AudioBuffer *buffer = new struct AudioBuffer;
     buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
     buffer->buffer = new uint16_t[samplesToGenerate * 2];
     uint16_t *bufferPointer = buffer->buffer;
 
-    int16_t volume = volumeToOutputVolume(soundChannel1->getInitialVolume());
+    int16_t volume = volumeToOutputVolume(squareWaveChannel->getInitialVolume());
+    int16_t duty = squareWaveChannel->getSoundDuty();
+
+    float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
 
     for (int sample = 0; sample < samplesToGenerate; sample += 1) {
-        frequencyTimer1Ticks += frequencyTimerClocksPerMillisecond * sampleIntervalMs;
-        generateSquareWave(bufferPointer, volume, frequencyTimer1Ticks, soundChannel1->getSoundDuty());
+        generateSquareWaveSample(bufferPointer, volume, squareWaveChannel->getFrequencyTimerTicks(), duty);
+        squareWaveChannel->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
         bufferPointer += 2;
     }
 
     return buffer;
 }
 
-struct AudioBuffer * APU::generateChannel2(long timeSinceLastStep) {
-    int frequency = soundChannel2->getFrequency();
-    if (frequency == 0) {
-        return 0;
-    }
-    // if (soundChannel2->getInternalLengthCounter() == 0) {
-    //     return 0;
-    // }
-
-    //if (isBitClear(soundChannel2->read8(NR_24_SOUND_MODE_FREQ_HI), 7)) return 0;
-
-    // A timer generates an output clock every N input clocks, where N is the timer's period.
-    // This is the wave timer's frequency in Hz.
-    if (internalFrequencyTimer2Period != soundChannel2->getInternalFrequencyTimerPeriod()) {
-        frequencyTimer2Ticks = 0;
-        internalFrequencyTimer2Period = soundChannel2->getInternalFrequencyTimerPeriod();
-    }
-
-    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / soundChannel2->getInternalFrequencyTimerPeriod();
-    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-
-    // Figure out how many samples to generate
-    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-    float samplesToGenerate = timeSinceLastStep * samplesPerMillisecond;
-    float sampleIntervalMs = timeSinceLastStep / samplesToGenerate;
-
-    struct AudioBuffer *buffer = new struct AudioBuffer;
-    buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
-    buffer->buffer = new uint16_t[samplesToGenerate * 2];
-    uint16_t *bufferPointer = buffer->buffer;
-
-    int16_t volume = volumeToOutputVolume(soundChannel2->getInitialVolume());
-
-    for (int sample = 0; sample < samplesToGenerate; sample += 1) {
-        frequencyTimer2Ticks += frequencyTimerClocksPerMillisecond * sampleIntervalMs;
-        generateSquareWave(bufferPointer, volume, frequencyTimer2Ticks, soundChannel2->getSoundDuty());
-        bufferPointer += 2;
-    }
-
-    return buffer;
-}
-
-void APU::generateSquareWave(uint16_t *bufferPointer, int volume, float frequencyTimerTicks, int duty) {
+void APU::generateSquareWaveSample(uint16_t *bufferPointer, int volume, float frequencyTimerTicks, int duty) {
     int frequencyTimerTicksModulo8 = (int)frequencyTimerTicks % 8;
 
     switch (duty) {
@@ -177,46 +155,6 @@ void APU::generateSquareWave(uint16_t *bufferPointer, int volume, float frequenc
             }
         break;
     }
-}
-
-void APU::step() {
-
-    long millisecondsSinceLastStep = TIME_MS - lastStepTime;
-    float internalLengthCounterDecrementsPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
-    int internalLengthCounterDecrements = internalLengthCounterDecrementsPerMilliseconds * millisecondsSinceLastStep;
-    soundChannel1->decrementInternalLengthCounter(internalLengthCounterDecrements);
-    soundChannel2->decrementInternalLengthCounter(internalLengthCounterDecrements);
-
-    struct AudioBuffer *channel1Buffer = generateChannel1(millisecondsSinceLastStep);
-    struct AudioBuffer *channel2Buffer = generateChannel2(millisecondsSinceLastStep);
-
-    if (channel1Buffer != 0 && channel2Buffer != 0) {
-
-        struct AudioBuffer *finalBuffer;
-        finalBuffer = new struct AudioBuffer;
-        finalBuffer->size = channel1Buffer->size;
-        finalBuffer->buffer = new uint16_t[channel1Buffer->size / 2];
-
-        for (int i = 0; i < (channel1Buffer->size / sizeof(uint16_t)); i++) {
-            uint16_t sampleFrom1 = channel1Buffer->buffer[i];
-            uint16_t sampleFrom2 = channel2Buffer->buffer[i];
-
-            finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2);
-            // if (sampleFrom1 > sampleFrom2) finalBuffer->buffer[i] = sampleFrom1;
-            // else finalBuffer->buffer[i] = sampleFrom2;
-
-        }
-
-        sound->pushBuffer(finalBuffer);
-
-    } else if (channel1Buffer != 0) {
-        sound->pushBuffer(channel1Buffer);
-    } else if (channel2Buffer != 0) {
-        sound->pushBuffer(channel2Buffer);
-    }
-
-    lastStepTime = TIME_MS;
-
 }
 
 uint16_t APU::volumeToOutputVolume(uint16_t volume) {
