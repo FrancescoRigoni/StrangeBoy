@@ -45,9 +45,9 @@ struct AudioBuffer * APU::generateChannel1(long timeSinceLastStep) {
     if (frequency == 0) {
         return 0;
     }
-    if (soundChannel1->getInternalLengthCounter() == 0) {
-        return 0;
-    }
+    // if (soundChannel1->getInternalLengthCounter() == 0) {
+    //     return 0;
+    // }
 
     //if (isBitClear(soundChannel1->read8(NR_14_SOUND_MODE_FREQ_HI), 7)) return 0;
 
@@ -87,9 +87,9 @@ struct AudioBuffer * APU::generateChannel2(long timeSinceLastStep) {
     if (frequency == 0) {
         return 0;
     }
-    if (soundChannel2->getInternalLengthCounter() == 0) {
-        return 0;
-    }
+    // if (soundChannel2->getInternalLengthCounter() == 0) {
+    //     return 0;
+    // }
 
     //if (isBitClear(soundChannel2->read8(NR_24_SOUND_MODE_FREQ_HI), 7)) return 0;
 
@@ -201,9 +201,9 @@ void APU::step() {
             uint16_t sampleFrom1 = channel1Buffer->buffer[i];
             uint16_t sampleFrom2 = channel2Buffer->buffer[i];
 
-            //finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2) / 2;
-            if (sampleFrom1 > sampleFrom2) finalBuffer->buffer[i] = sampleFrom1;
-            else finalBuffer->buffer[i] = sampleFrom2;
+            finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2);
+            // if (sampleFrom1 > sampleFrom2) finalBuffer->buffer[i] = sampleFrom1;
+            // else finalBuffer->buffer[i] = sampleFrom2;
 
         }
 

@@ -71,9 +71,9 @@ void Sound::run() {
     struct AudioBuffer *buffer = popBuffer();
     if (buffer == 0) return;
 
-    if (SDL_GetQueuedAudioSize(1) == 0) {
-        cout << "No audio queued" << endl;
-    }
+    // if (SDL_GetQueuedAudioSize(1) == 0) {
+    //     cout << "No audio queued" << endl;
+    // }
 
     SDL_QueueAudio(1, buffer->buffer, buffer->size);
     SDL_PauseAudio(0);
