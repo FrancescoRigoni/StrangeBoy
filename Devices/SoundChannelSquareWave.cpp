@@ -40,19 +40,34 @@ uint8_t SoundChannelSquareWave::getLength() {
     return soundModeLengthDuty & 0b111111;
 }
 
-uint8_t SoundChannelSquareWave::getInitialVolume() {
-    return (soundModeEnvelope & 0xF0) >> 4;
+uint8_t SoundChannelSquareWave::getEnvelopedVolume() {
+    return envelopedVolume;
 }
 
-uint8_t SoundChannelSquareWave::getInternalLengthCounter() {
+void SoundChannelSquareWave::addToEnvelopeTimerTicks(float ticks) {
+    envelopeCounter += ticks;
+    if (envelopeCounter > 1 && internalNumberOfEnvelopeOps > 0) {
+        envelopeCounter--;
+        bool amplify = isBitSet(soundModeEnvelope, 3);
+        internalNumberOfEnvelopeOps--;
+        if (amplify && envelopedVolume + 1 <= 15) envelopedVolume++;
+        else if (!amplify && envelopedVolume - ticks >= 0) envelopedVolume--;
+    }
+}
+
+float SoundChannelSquareWave::getInternalLengthCounter() {
     return internalLengthCounter;
+}
+
+bool SoundChannelSquareWave::lengthCounterEnabled() {
+    return soundModeFrequencyHigh & 0b01000000;
 }
 
 uint16_t SoundChannelSquareWave::getFrequencyTimerPeriod() {
     return frequencyTimerPeriod;
 }
 
-void SoundChannelSquareWave::decrementInternalLengthCounter(int decrements) {
+void SoundChannelSquareWave::decrementInternalLengthCounter(float decrements) {
     internalLengthCounter -= decrements;
     if (internalLengthCounter < 0) internalLengthCounter = 0;
 }
@@ -66,12 +81,25 @@ void SoundChannelSquareWave::trigger() {
         frequencyTimerPeriod = newFrequencyTimerPeriod;
         frequencyTimerTicks = 0;
     }
+
+    internalNumberOfEnvelopeOps = soundModeEnvelope & 0b111;
+    envelopedVolume = (soundModeEnvelope & 0xF0) >> 4;
+    envelopeCounter = 0;
 }
 
 void SoundChannelSquareWave::write8(uint16_t address, uint8_t value) {
     if (address == regSweepAddress) soundModeSweep = value;
-    else if (address == regLengthDutyAddress) soundModeLengthDuty = value;
-    else if (address == regEnvelopeAddress) soundModeEnvelope = value;
+    else if (address == regLengthDutyAddress) {
+        soundModeLengthDuty = value;
+        // Length can be reloaded at any time
+        internalLengthCounter = getLength();
+    }
+    else if (address == regEnvelopeAddress) {
+        soundModeEnvelope = value;
+        internalNumberOfEnvelopeOps = soundModeEnvelope & 0b111;
+        envelopedVolume = (soundModeEnvelope & 0xF0) >> 4;
+        envelopeCounter = 0;
+    }
     else if (address == regFreqLowAddress) soundModeFrequencyLow = value;
     else if (address == regFreqHighAddress) {
         soundModeFrequencyHigh = value; 

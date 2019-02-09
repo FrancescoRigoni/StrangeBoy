@@ -37,8 +37,13 @@ private:
     uint8_t soundModeFrequencyLow;
     uint8_t soundModeFrequencyHigh;
 
-    int internalLengthCounter;
+    float internalLengthCounter;
     uint16_t frequencyTimerPeriod;
+
+    float envelopeCounter;
+    int internalNumberOfEnvelopeOps;
+    int envelopedVolume;
+
     float frequencyTimerTicks = 0;
 
     void trigger();
@@ -57,15 +62,19 @@ public:
     uint8_t getSoundDuty();
     uint16_t getFrequency();
     uint8_t getLength();
-    uint8_t getInitialVolume();
 
-    uint8_t getInternalLengthCounter();
-    void decrementInternalLengthCounter(int);
+    uint8_t getEnvelopedVolume();
+    void addToEnvelopeTimerTicks(float);
+
+    float getInternalLengthCounter();
+    void decrementInternalLengthCounter(float);
 
     uint16_t getFrequencyTimerPeriod();
     
     float getFrequencyTimerTicks();
     void addToFrequencyTimerTicks(float);
+
+    bool lengthCounterEnabled();
 
 };
 

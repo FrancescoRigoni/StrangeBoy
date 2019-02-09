@@ -11,13 +11,13 @@
 #define NR_52_2_ON_OFF_BIT      1
 #define NR_52_1_ON_OFF_BIT      0
 
-#define INPUT_MASTER_CLOCK_HZ   4194304
+#define INPUT_MASTER_CLOCK_HZ   4194304.0
 
 #define SAMPLE_FREQUENCY        48000.0
 #define BYTES_PER_SAMPLE        (sizeof(int16_t) * 2)
 
-#define FRAME_SEQUENCER_FREQ    512
-#define LENGTH_COUNTER_FREQ     256.0
+#define LENGTH_COUNTER_FREQ         256.0
+#define ENVELOPE_COUNTER_FREQ        64.0
 
 #define TIME_MS                                                         \
     chrono::duration_cast<chrono::milliseconds>                         \
@@ -36,10 +36,6 @@ APU::APU(SoundChannelSquareWave *soundChannel1, SoundChannelSquareWave *soundCha
 
 void APU::generateOneBuffer() {
     long millisecondsSinceLastBuffer = TIME_MS - lastStepTime;
-    float internalLengthCounterDecrementsPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
-    int internalLengthCounterDecrements = internalLengthCounterDecrementsPerMilliseconds * millisecondsSinceLastBuffer;
-    soundChannel1->decrementInternalLengthCounter(internalLengthCounterDecrements);
-    soundChannel2->decrementInternalLengthCounter(internalLengthCounterDecrements);
 
     struct AudioBuffer *channel1Buffer = generateSquareWaveBuffer(soundChannel1, millisecondsSinceLastBuffer);
     struct AudioBuffer *channel2Buffer = generateSquareWaveBuffer(soundChannel2, millisecondsSinceLastBuffer);
@@ -74,10 +70,6 @@ struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *square
         return 0;
     }
 
-    // A timer generates an output clock every N input clocks, where N is the timer's period.
-    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerPeriod();
-    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-
     // Figure out how many samples to generate
     float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
     float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
@@ -86,17 +78,41 @@ struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *square
     struct AudioBuffer *buffer = new struct AudioBuffer;
     buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
     buffer->buffer = new uint16_t[samplesToGenerate * 2];
+    memset(buffer->buffer, 0, buffer->size);
     uint16_t *bufferPointer = buffer->buffer;
 
-    int16_t volume = volumeToOutputVolume(squareWaveChannel->getInitialVolume());
     int16_t duty = squareWaveChannel->getSoundDuty();
 
+    // A timer generates an output clock every N input clocks, where N is the timer's period.
+    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerPeriod();
+    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
     float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
 
+    // Length counter is clocked at 256 Hz
+    float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
+    float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
+
+    // Envelope counter is clocked at 64 Hz
+    float envelopeCounterTicksPerMilliseconds = ENVELOPE_COUNTER_FREQ / 1000.0;
+    float envelopeCounterTicksPerSample = envelopeCounterTicksPerMilliseconds * sampleIntervalMs;
+
     for (int sample = 0; sample < samplesToGenerate; sample += 1) {
-        generateSquareWaveSample(bufferPointer, volume, squareWaveChannel->getFrequencyTimerTicks(), duty);
+
+        generateSquareWaveSample(bufferPointer, 
+                                 volumeToOutputVolume(squareWaveChannel->getEnvelopedVolume()), 
+                                 squareWaveChannel->getFrequencyTimerTicks(), 
+                                 duty);
+        
+        squareWaveChannel->decrementInternalLengthCounter(lengthCounterTicksPerSample);
         squareWaveChannel->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
+        squareWaveChannel->addToEnvelopeTimerTicks(envelopeCounterTicksPerSample);
+
         bufferPointer += 2;
+
+        if (squareWaveChannel->lengthCounterEnabled() && 
+            squareWaveChannel->getInternalLengthCounter() == 0) {
+            break;
+        }
     }
 
     return buffer;
@@ -158,7 +174,7 @@ void APU::generateSquareWaveSample(uint16_t *bufferPointer, int volume, float fr
 }
 
 uint16_t APU::volumeToOutputVolume(uint16_t volume) {
-    float volumeRatio = (float) volume / 16.0f;
+    float volumeRatio = (float) volume / 15.0f;
     return 1000 * volumeRatio;
 }
 
