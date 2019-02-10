@@ -16,6 +16,10 @@ SoundChannelSquareWave::SoundChannelSquareWave(uint16_t regSweepAddress,
     frequencyTimerPeriod = 0;
 }
 
+bool SoundChannelSquareWave::isChannelEnabled() {
+    return channelEnabled;
+}
+
 uint8_t SoundChannelSquareWave::getSoundLength() {
     return soundModeLengthDuty & 0b00111111;
 }
@@ -72,7 +76,37 @@ void SoundChannelSquareWave::decrementInternalLengthCounter(float decrements) {
     if (internalLengthCounter < 0) internalLengthCounter = 0;
 }
 
+int SoundChannelSquareWave::getSweepTimerDivisor() {
+    return (soundModeSweep & 0b1110000) >> 4;
+}
+
+bool SoundChannelSquareWave::sweepUp() {
+    return isBitClear(soundModeSweep, 3);
+}
+
+int SoundChannelSquareWave::getSweepShifts() {
+    return soundModeSweep & 0b111;
+}
+
+int sweepopscount = 0;
+
+void SoundChannelSquareWave::addToSweepTimerTicks(float ticks) {
+    sweepTimerTicks += ticks;
+    if (sweepTimerTicks > 1) {
+        sweepTimerTicks = sweepTimerTicks - 1.0;
+        if (internalSweepEnabledFlag && getSweepTimerDivisor()) {
+            sweepFrequencyCalculate();
+            sweepopscount++;
+            //if (sweepopscount > 1) internalSweepEnabledFlag = false;
+        }
+    }
+}
+
 void SoundChannelSquareWave::trigger() {
+    channelEnabled = true;
+
+    sweepopscount = 0;
+
     internalLengthCounter = getLength();
     if (internalLengthCounter == 0) internalLengthCounter = 64;
 
@@ -85,25 +119,67 @@ void SoundChannelSquareWave::trigger() {
     internalNumberOfEnvelopeOps = soundModeEnvelope & 0b111;
     envelopedVolume = (soundModeEnvelope & 0xF0) >> 4;
     envelopeCounter = 0;
+
+    sweepShadowFrequency = getFrequency();
+    sweepTimerTicks = 0;
+    internalSweepEnabledFlag = getSweepTimerDivisor() != 0 || getSweepShifts() != 0;
+
+    if (getSweepShifts() != 0) sweepFrequencyCalculate();
+}
+
+void SoundChannelSquareWave::sweepFrequencyCalculate() {
+    uint16_t newFrequencyOperand = sweepShadowFrequency >> getSweepShifts();
+    uint16_t newFrequency = sweepShadowFrequency;
+
+    if (sweepUp()) newFrequency += newFrequencyOperand;
+    else newFrequency -= newFrequencyOperand;
+
+    //cout << "Sweep " << sweepShadowFrequency << " new " <<  newFrequency << endl;
+
+    if (newFrequency > 2047) {
+        //cout << "sweep disabling channel!" << endl;
+        channelEnabled = false;
+        internalSweepEnabledFlag = false;
+    } else {
+        soundModeFrequencyLow = (uint8_t) newFrequency;
+        soundModeFrequencyHigh &= 0b11111000;
+        soundModeFrequencyHigh |= (newFrequency >> 8) & 0b111;
+
+        sweepShadowFrequency = getFrequency();
+        //cout << "sweepShadowFrequency " << sweepShadowFrequency << endl;
+
+        uint16_t newFrequencyTimerPeriod = (2048-getFrequency()) * 4;
+        frequencyTimerPeriod = newFrequencyTimerPeriod;
+    }
 }
 
 void SoundChannelSquareWave::write8(uint16_t address, uint8_t value) {
-    if (address == regSweepAddress) soundModeSweep = value;
+    if (address == regSweepAddress) {
+        soundModeSweep = value;
+        //cout << "Write sweep" << endl;
+    }
     else if (address == regLengthDutyAddress) {
         soundModeLengthDuty = value;
         // Length can be reloaded at any time
         internalLengthCounter = getLength();
+        //cout << "Write length" << endl;
     }
     else if (address == regEnvelopeAddress) {
         soundModeEnvelope = value;
         internalNumberOfEnvelopeOps = soundModeEnvelope & 0b111;
         envelopedVolume = (soundModeEnvelope & 0xF0) >> 4;
         envelopeCounter = 0;
+        //cout << "Write envelope" << endl;
     }
-    else if (address == regFreqLowAddress) soundModeFrequencyLow = value;
+    else if (address == regFreqLowAddress) {
+        soundModeFrequencyLow = value;
+        //cout << "Write freq lo" << endl;
+    }
     else if (address == regFreqHighAddress) {
+        //cout << "Write freq hi" << endl;
         soundModeFrequencyHigh = value; 
         if (isBitSet(soundModeFrequencyHigh, 7)) {
+            cout << "trigger" << endl;
             trigger();
         }
     }

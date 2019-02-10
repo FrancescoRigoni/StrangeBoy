@@ -37,12 +37,18 @@ private:
     uint8_t soundModeFrequencyLow;
     uint8_t soundModeFrequencyHigh;
 
+    bool channelEnabled;
+
     float internalLengthCounter;
     uint16_t frequencyTimerPeriod;
 
     float envelopeCounter;
     int internalNumberOfEnvelopeOps;
     int envelopedVolume;
+
+    bool internalSweepEnabledFlag;
+    float sweepTimerTicks;
+    uint16_t sweepShadowFrequency;
 
     float frequencyTimerTicks = 0;
 
@@ -57,6 +63,8 @@ public:
 
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
+
+    bool isChannelEnabled();
 
     uint8_t getSoundLength();
     uint8_t getSoundDuty();
@@ -75,6 +83,12 @@ public:
     void addToFrequencyTimerTicks(float);
 
     bool lengthCounterEnabled();
+
+    int getSweepTimerDivisor();
+    bool sweepUp();
+    int getSweepShifts();
+    void addToSweepTimerTicks(float);
+    void sweepFrequencyCalculate();
 
 };
 

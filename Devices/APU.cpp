@@ -18,6 +18,7 @@
 
 #define LENGTH_COUNTER_FREQ         256.0
 #define ENVELOPE_COUNTER_FREQ        64.0
+#define SWEEP_COUNTER_FREQ          128.0
 
 #define TIME_MS                                                         \
     chrono::duration_cast<chrono::milliseconds>                         \
@@ -65,10 +66,7 @@ void APU::generateOneBuffer() {
 }
 
 struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *squareWaveChannel, long bufferDurationMilliseconds) {
-    int frequency = squareWaveChannel->getFrequency();
-    if (frequency == 0) {
-        return 0;
-    }
+    if (!squareWaveChannel->isChannelEnabled()) return 0;
 
     // Figure out how many samples to generate
     float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
@@ -81,13 +79,6 @@ struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *square
     memset(buffer->buffer, 0, buffer->size);
     uint16_t *bufferPointer = buffer->buffer;
 
-    int16_t duty = squareWaveChannel->getSoundDuty();
-
-    // A timer generates an output clock every N input clocks, where N is the timer's period.
-    int frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerPeriod();
-    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-    float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
-
     // Length counter is clocked at 256 Hz
     float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
     float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
@@ -96,23 +87,37 @@ struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *square
     float envelopeCounterTicksPerMilliseconds = ENVELOPE_COUNTER_FREQ / 1000.0;
     float envelopeCounterTicksPerSample = envelopeCounterTicksPerMilliseconds * sampleIntervalMs;
 
+    // Sweep counter is clocked at 128 Hz, this frequency must be divided by the sweep counter divisor
+    float sweepDivisor = squareWaveChannel->getSweepTimerDivisor();
+    float sweepCounterTicksPerSample = 0;
+    if (sweepDivisor != 0) { 
+        float sweepCounterTicksPerMilliseconds = (SWEEP_COUNTER_FREQ/sweepDivisor) / 1000.0;
+        sweepCounterTicksPerSample = sweepCounterTicksPerMilliseconds * sampleIntervalMs;
+    }
+
     for (int sample = 0; sample < samplesToGenerate; sample += 1) {
+
+        // A timer generates an output clock every N input clocks, where N is the timer's period.
+        float frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerPeriod();
+        float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
+        float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
 
         generateSquareWaveSample(bufferPointer, 
                                  volumeToOutputVolume(squareWaveChannel->getEnvelopedVolume()), 
                                  squareWaveChannel->getFrequencyTimerTicks(), 
-                                 duty);
+                                 squareWaveChannel->getSoundDuty());
         
-        squareWaveChannel->decrementInternalLengthCounter(lengthCounterTicksPerSample);
+        //squareWaveChannel->decrementInternalLengthCounter(lengthCounterTicksPerSample);
         squareWaveChannel->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
         squareWaveChannel->addToEnvelopeTimerTicks(envelopeCounterTicksPerSample);
+        squareWaveChannel->addToSweepTimerTicks(sweepCounterTicksPerSample);
 
         bufferPointer += 2;
 
-        if (squareWaveChannel->lengthCounterEnabled() && 
-            squareWaveChannel->getInternalLengthCounter() == 0) {
-            break;
-        }
+        // if (squareWaveChannel->lengthCounterEnabled() && 
+        //     squareWaveChannel->getInternalLengthCounter() == 0) {
+        //     break;
+        // }
     }
 
     return buffer;
