@@ -26,7 +26,13 @@ private:
 
     struct AudioBuffer *generateSquareWaveBuffer(SoundChannelSquareWave *, long);
     uint16_t volumeToOutputVolume(uint16_t);
-    void generateSquareWaveSample(uint16_t *, int, float, int);
+    void generateSquareWaveSample(uint16_t *, SoundChannelSquareWave *soundChannel);
+
+    bool isTerminal1On();
+    float getTerminal1Volume();
+
+    bool isTerminal2On();
+    float getTerminal2Volume();
 
 public:
     APU(SoundChannelSquareWave *, SoundChannelSquareWave *, Sound *);

@@ -37,25 +37,33 @@ private:
     uint8_t soundModeFrequencyLow;
     uint8_t soundModeFrequencyHigh;
 
+    int channelNumber;
     bool channelEnabled;
 
-    float internalLengthCounter;
-    uint16_t frequencyTimerPeriod;
+    uint16_t frequencyTimerDivisor;
+    float frequencyCounter = 0;
 
-    float envelopeCounter;
-    int internalNumberOfEnvelopeOps;
+    float lengthCounter = 0;
+    int length;
+    
+    float envelopeCounter = 0;
+    int envelopeTimerDivisor;
     int envelopedVolume;
 
-    bool internalSweepEnabledFlag;
-    float sweepTimerTicks;
+    bool sweepEnabled;
+    float sweepCounter = 0;
     uint16_t sweepShadowFrequency;
 
-    float frequencyTimerTicks = 0;
-
     void trigger();
+    uint8_t getSoundLength();
+    uint16_t getFrequency();
+    uint8_t getLength();
+
+    void sweepFrequencyCalculate();
 
 public:
-    SoundChannelSquareWave(uint16_t regSweepAddress, 
+    SoundChannelSquareWave(int channelNumber,
+                           uint16_t regSweepAddress, 
                            uint16_t regLengthDutyAddress,
                            uint16_t regEnvelopeAddress,
                            uint16_t regFreqLowAddress,
@@ -64,32 +72,29 @@ public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
+    int getChannelNumber() {
+        return channelNumber;
+    }
+
+    void setChannelEnabled(bool);
     bool isChannelEnabled();
 
-    uint8_t getSoundLength();
     uint8_t getSoundDuty();
-    uint16_t getFrequency();
-    uint8_t getLength();
 
     uint8_t getEnvelopedVolume();
+    int getEnvelopeTimerDivisor();
     void addToEnvelopeTimerTicks(float);
 
-    float getInternalLengthCounter();
-    void decrementInternalLengthCounter(float);
+    void addToLengthTimerTicks(float);
 
-    uint16_t getFrequencyTimerPeriod();
-    
+    uint16_t getFrequencyTimerDivisor();
     float getFrequencyTimerTicks();
     void addToFrequencyTimerTicks(float);
-
-    bool lengthCounterEnabled();
 
     int getSweepTimerDivisor();
     bool sweepUp();
     int getSweepShifts();
     void addToSweepTimerTicks(float);
-    void sweepFrequencyCalculate();
-
 };
 
 #endif

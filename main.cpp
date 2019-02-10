@@ -96,13 +96,15 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     InterruptFlags interruptFlags;
     DivReg divReg;
 
-    SoundChannelSquareWave soundChannel1(NR_10_SOUND_MODE_SWEEP, 
+    SoundChannelSquareWave soundChannel1(1,
+                                         NR_10_SOUND_MODE_SWEEP, 
                                          NR_11_SOUND_MODE_LENGTH_DUTY,
                                          NR_12_SOUND_MODE_ENVELOPE, 
                                          NR_13_SOUND_MODE_FREQ_LO, 
                                          NR_14_SOUND_MODE_FREQ_HI);
 
-    SoundChannelSquareWave soundChannel2(0,
+    SoundChannelSquareWave soundChannel2(2,
+                                         0,
                                          NR_21_SOUND_MODE_LENGTH_DUTY,
                                          NR_22_SOUND_MODE_ENVELOPE,
                                          NR_23_SOUND_MODE_FREQ_LO,
