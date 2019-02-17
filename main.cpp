@@ -22,6 +22,7 @@
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
+#include "Devices/SoundChannelWave.hpp"
 
 #include "Util/LogUtil.hpp"
 #include "Cartridge.hpp"
@@ -110,7 +111,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
                                          NR_23_SOUND_MODE_FREQ_LO,
                                          NR_24_SOUND_MODE_FREQ_HI);
 
-    APU apu(&soundChannel1, &soundChannel2, sound);
+    SoundChannelWave soundChannel3;
+
+    APU apu(&soundChannel1, &soundChannel2, &soundChannel3, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
@@ -138,6 +141,17 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     memory.registerIoDevice(NR_22_SOUND_MODE_ENVELOPE, &soundChannel2);
     memory.registerIoDevice(NR_23_SOUND_MODE_FREQ_LO, &soundChannel2);
     memory.registerIoDevice(NR_24_SOUND_MODE_FREQ_HI, &soundChannel2);
+
+    memory.registerIoDevice(NR_30_SOUND_ON_OFF, &soundChannel3);
+    memory.registerIoDevice(NR_31_SOUND_LENGTH, &soundChannel3);
+    memory.registerIoDevice(NR_32_SOUND_OUTPUT_LEVEL, &soundChannel3);
+    memory.registerIoDevice(NR_33_SOUND_MODE_FREQ_LO, &soundChannel3);
+    memory.registerIoDevice(NR_34_SOUND_MODE_FREQ_HI, &soundChannel3);
+    for (uint16_t waveRamAddress = WAVE_RAM_START; 
+         waveRamAddress <= WAVE_RAM_END; 
+         waveRamAddress++) {
+        memory.registerIoDevice(waveRamAddress, &soundChannel3);
+    }
 
     memory.registerIoDevice(NR_50_CHANNEL_CONTROL, &apu);
     memory.registerIoDevice(NR_51_OUTPUT_SELECTION, &apu);

@@ -55,7 +55,6 @@ private:
     uint16_t sweepShadowFrequency;
 
     void trigger();
-    uint8_t getSoundLength();
     uint16_t getFrequency();
     uint8_t getLength();
 

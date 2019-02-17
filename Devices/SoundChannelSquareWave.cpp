@@ -24,10 +24,6 @@ void SoundChannelSquareWave::setChannelEnabled(bool enabled) {
     channelEnabled = enabled;
 }
 
-uint8_t SoundChannelSquareWave::getSoundLength() {
-    return soundModeLengthDuty & 0b00111111;
-}
-
 uint8_t SoundChannelSquareWave::getSoundDuty() {
     return (soundModeLengthDuty & 0b11000000) >> 6;
 }
