@@ -7,6 +7,7 @@
 #include "UI/Sound.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/SoundChannelWave.hpp"
+#include "Devices/SoundChannelNoise.hpp"
 #include "Devices/IoDevice.hpp"
 
 #define NR_50_CHANNEL_CONTROL            0xFF24
@@ -25,9 +26,12 @@ private:
     SoundChannelSquareWave *soundChannel1;
     SoundChannelSquareWave *soundChannel2;
     SoundChannelWave *soundChannel3;
+    SoundChannelNoise *soundChannel4;
 
     struct AudioBuffer *generateSquareWaveBuffer(SoundChannelSquareWave *, long);
     struct AudioBuffer *generateWaveBuffer(long);
+    struct AudioBuffer *generateNoiseBuffer(long);
+
     uint16_t volumeToOutputVolume(uint16_t);
     void generateSquareWaveSample(uint16_t *, SoundChannelSquareWave *soundChannel);
 
@@ -38,7 +42,7 @@ private:
     float getTerminal2Volume();
 
 public:
-    APU(SoundChannelSquareWave *, SoundChannelSquareWave *, SoundChannelWave *, Sound *);
+    APU(SoundChannelSquareWave *, SoundChannelSquareWave *, SoundChannelWave *, SoundChannelNoise *, Sound *);
 
     void generateOneBuffer();
 

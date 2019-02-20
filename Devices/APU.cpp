@@ -29,13 +29,15 @@ using namespace std::chrono;
 
 APU::APU(SoundChannelSquareWave *soundChannel1, 
          SoundChannelSquareWave *soundChannel2, 
-         SoundChannelWave *soundChannel3, 
+         SoundChannelWave *soundChannel3,
+         SoundChannelNoise *soundChannel4, 
          Sound *sound) {
 
     this->sound = sound;
     this->soundChannel1 = soundChannel1;
     this->soundChannel2 = soundChannel2;
     this->soundChannel3 = soundChannel3;
+    this->soundChannel4 = soundChannel4;
 
     lastStepTime = TIME_MS;
 }
@@ -44,15 +46,17 @@ void APU::generateOneBuffer() {
 
     //if (isBitClear(soundOnOff, NR_52_ALL_ON_OFF_BIT)) {
         long millisecondsSinceLastBuffer = (TIME_MS - lastStepTime);
-        lastStepTime = TIME_MS;
+        
 
         struct AudioBuffer *channel1Buffer = 0;
         struct AudioBuffer *channel2Buffer = 0;
         struct AudioBuffer *channel3Buffer = 0;
+        struct AudioBuffer *channel4Buffer = 0;
 
         channel1Buffer = generateSquareWaveBuffer(soundChannel1, millisecondsSinceLastBuffer);
         channel2Buffer = generateSquareWaveBuffer(soundChannel2, millisecondsSinceLastBuffer);
         channel3Buffer = generateWaveBuffer(millisecondsSinceLastBuffer);
+        channel4Buffer = generateNoiseBuffer(millisecondsSinceLastBuffer);
 
         float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
         float samplesToGenerate = millisecondsSinceLastBuffer * samplesPerMillisecond;
@@ -67,8 +71,9 @@ void APU::generateOneBuffer() {
             uint16_t sampleFrom1 = channel1Buffer != 0 ? channel1Buffer->buffer[i] : 0;
             uint16_t sampleFrom2 = channel2Buffer != 0 ? channel2Buffer->buffer[i] : 0;
             uint16_t sampleFrom3 = channel3Buffer != 0 ? channel3Buffer->buffer[i] : 0;
+            uint16_t sampleFrom4 = channel4Buffer != 0 ? channel4Buffer->buffer[i] : 0;
 
-            finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2 + sampleFrom3);
+            finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2 + sampleFrom3 + sampleFrom4);
         }
 
         if (channel1Buffer != 0) {
@@ -83,13 +88,72 @@ void APU::generateOneBuffer() {
             delete[] channel3Buffer->buffer;
             delete channel3Buffer;
         }
+        if (channel4Buffer != 0) {
+            delete[] channel4Buffer->buffer;
+            delete channel4Buffer;
+        }
         
         sound->pushBuffer(finalBuffer);
+
+        lastStepTime = TIME_MS;
 
     //}
     // } else {
     //     cout << "Sound off" << endl;
     // }
+}
+
+struct AudioBuffer *APU::generateNoiseBuffer(long bufferDurationMilliseconds) {
+    if (!soundChannel4->isChannelEnabled()) return 0;
+
+    // Figure out how many samples to generate
+    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
+    float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
+    float sampleIntervalMs = bufferDurationMilliseconds / samplesToGenerate;
+
+    struct AudioBuffer *buffer = new struct AudioBuffer;
+    buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
+    buffer->buffer = new uint16_t[samplesToGenerate * 2];
+    memset(buffer->buffer, 0, buffer->size);
+    uint16_t *bufferPointer = buffer->buffer;
+
+    // Length counter is clocked at 256 Hz
+    float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
+    float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
+
+    // Envelope counter is clocked at 64 Hz
+    float envelopeDivisor = soundChannel4->getEnvelopeTimerDivisor();
+    float envelopeCounterTicksPerMilliseconds = (ENVELOPE_COUNTER_FREQ/envelopeDivisor)/ 1000.0;
+    float envelopeCounterTicksPerSample = envelopeCounterTicksPerMilliseconds * sampleIntervalMs;
+
+    float frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / (float)soundChannel4->getFrequencyTimerDivisor();
+    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
+    float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
+
+    // Output sound 4 to SO1 terminal
+    bool outputToLeft = isBitSet(outputSelection, 3);
+    // Output sound 4 to SO2 terminal
+    bool outputToRight = isBitSet(outputSelection, 7);
+
+    //cout << "Per sample: " << frequencyTimerTicksIncrementPerSample << endl;
+
+    for (int sample = 0; 
+         sample < samplesToGenerate && soundChannel4->isChannelEnabled(); 
+         sample += 1) {
+
+        uint16_t outputLeft = outputToLeft && !soundChannel4->getLSBOfLFSR() ? soundChannel4->getEnvelopedVolume()*getTerminal1Volume() : 0;
+        uint16_t outputRight = outputToRight && !soundChannel4->getLSBOfLFSR() ? soundChannel4->getEnvelopedVolume()*getTerminal2Volume() : 0;
+
+        *bufferPointer++ = volumeToOutputVolume(outputLeft);
+        *bufferPointer++ = volumeToOutputVolume(outputRight);
+
+        // Update all the timers
+        soundChannel4->addToLengthTimerTicks(lengthCounterTicksPerSample);
+        soundChannel4->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
+        soundChannel4->addToEnvelopeTimerTicks(envelopeCounterTicksPerSample);
+    }
+
+    return buffer;
 }
 
 struct AudioBuffer *APU::generateWaveBuffer(long bufferDurationMilliseconds) {

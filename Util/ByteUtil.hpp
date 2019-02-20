@@ -51,4 +51,14 @@ inline void resetBit(uint8_t bit, uint8_t* in) {
     *in = *in & mask;
 }
 
+inline void setBit16(uint8_t bit, uint16_t* in) {
+    uint16_t mask = 1 << bit;
+    *in = *in | mask;
+}
+
+inline void resetBit16(uint8_t bit, uint16_t* in) {
+    uint16_t mask = ~(1 << bit);
+    *in = *in & mask;
+}
+
 #endif

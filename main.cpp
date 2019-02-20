@@ -23,6 +23,7 @@
 #include "Devices/DivReg.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/SoundChannelWave.hpp"
+#include "Devices/SoundChannelNoise.hpp"
 
 #include "Util/LogUtil.hpp"
 #include "Cartridge.hpp"
@@ -112,8 +113,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
                                          NR_24_SOUND_MODE_FREQ_HI);
 
     SoundChannelWave soundChannel3;
+    SoundChannelNoise soundChannel4;
 
-    APU apu(&soundChannel1, &soundChannel2, &soundChannel3, sound);
+    APU apu(&soundChannel1, &soundChannel2, &soundChannel3, &soundChannel4, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
     Cpu cpu(&memory, &interruptFlags);
 
@@ -153,6 +155,11 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
         memory.registerIoDevice(waveRamAddress, &soundChannel3);
     }
 
+    memory.registerIoDevice(NR_41_SOUND_MODE_LENGTH, &soundChannel4);
+    memory.registerIoDevice(NR_42_SOUND_MODE_ENVELOPE, &soundChannel4);
+    memory.registerIoDevice(NR_43_SOUND_MODE_POLY_COUNTER, &soundChannel4);
+    memory.registerIoDevice(NR_44_SOUND_MODE_FLAGS, &soundChannel4);
+
     memory.registerIoDevice(NR_50_CHANNEL_CONTROL, &apu);
     memory.registerIoDevice(NR_51_OUTPUT_SELECTION, &apu);
     memory.registerIoDevice(NR_52_SOUND_ON_OFF, &apu);
@@ -176,6 +183,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
+        // Generate audio buffer for one frame
         apu.generateOneBuffer();
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;

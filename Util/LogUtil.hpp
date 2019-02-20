@@ -21,7 +21,7 @@ using namespace std;
 //#define TRACE_SCREEN_ON
 //#define TRACE_CART_INFO_ON
 //#define TRACE_MBC_ON
-#define TRACE_SOUND_ON
+//#define TRACE_SOUND_ON
 
 #define OPCODE_PFX     "    : "
 #define OPCODE_CB_PFX     " : "
