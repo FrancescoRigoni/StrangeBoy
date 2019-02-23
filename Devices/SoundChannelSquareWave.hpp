@@ -50,6 +50,7 @@ private:
     SweepCounter sweepCounter;
 
     void checkForTrigger();
+    void updateFrequencyRegisters(int);
 
 public:
     SoundChannelSquareWave(uint16_t regSweepAddress, 

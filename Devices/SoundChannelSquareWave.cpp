@@ -52,13 +52,22 @@ void SoundChannelSquareWave::checkForTrigger() {
     // Set envelope counter
     envelopeCounter.load(ENV_VOLUME, ENV_UP, ENV_PERIOD);
     // Set sweep counter
-    sweepCounter.load(FREQUENCY_TO_PERIOD(FREQUENCY), !SWEEP_DOWN, SWEEP_PERIOD, SWEEP_SHIFTS);
+    sweepCounter.load(FREQUENCY, !SWEEP_DOWN, SWEEP_PERIOD, SWEEP_SHIFTS);
+}
+
+void SoundChannelSquareWave::updateFrequencyRegisters(int frequency) {
+    soundModeFrequencyLow = frequency;
+    soundModeFrequencyHigh &= 0b11111000;
+    soundModeFrequencyHigh |= (frequency & 0b11100000000) >> 8;
 }
 
 float SoundChannelSquareWave::sample() {
     if (sweepCounter.isEnabled()) {
-        sweepCounter.update();
-        frequencyTimer.updatePeriod(FREQUENCY_TO_PERIOD(sweepCounter.getFrequency()));
+        bool updated = sweepCounter.update();
+        if (updated) {
+            updateFrequencyRegisters(sweepCounter.getFrequency());
+            frequencyTimer.updatePeriod(FREQUENCY_TO_PERIOD(sweepCounter.getFrequency()));
+        }
     }
 
     frequencyTimer.update();

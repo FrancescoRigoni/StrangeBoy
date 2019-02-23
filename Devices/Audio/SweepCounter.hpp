@@ -15,11 +15,12 @@ private:
     bool enabled;
 
     bool overflowCheck();
+    void frequencyCalculate();
 
 public:
     void load(int frequency, bool up, int period, int shifts);
-    void update();
-    float getFrequency();
+    bool update();
+    int getFrequency();
     bool isEnabled();
 };
 

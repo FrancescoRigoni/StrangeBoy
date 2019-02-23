@@ -15,13 +15,18 @@ void SweepCounter::load(int frequency, bool up, int period, int shifts) {
     this->shifts = shifts;
     this->clockValue = 0.0;
     this->enabled = period != 0 || shifts != 0;
+
+    if (shifts != 0) {
+        frequencyCalculate();
+    }
 }
 
 bool SweepCounter::isEnabled() {
     return enabled;
 }
 
-void SweepCounter::update() {
+bool SweepCounter::update() {
+    bool frequencyUpdated = false;
     clockValue += SWEEP_COUNTER_INCREMENTS_PER_SAMPLE;
     if (clockValue >= 1.0) {
         clockValue -= 1.0;
@@ -29,14 +34,24 @@ void SweepCounter::update() {
         if (counterValue == 0 && counterPeriod > 0) {
             counterValue = counterPeriod;
             if (overflowCheck() && shifts > 0) {
-                int newFrequency = shadowFrequency >> shifts;
-                newFrequency *= (up ? 1 : -1);
-                shadowFrequency += newFrequency;
-                enabled = overflowCheck();
+                frequencyCalculate();
+                frequencyUpdated = true;
             } else {
                 enabled = false;
             }
         }
+    }
+    return frequencyUpdated;
+}
+
+void SweepCounter::frequencyCalculate() {
+    int newFrequency = shadowFrequency >> shifts;
+    if (up) newFrequency = shadowFrequency + newFrequency;
+    else newFrequency = shadowFrequency - newFrequency;
+    if (newFrequency < 2047) {
+        shadowFrequency = newFrequency;
+    } else {
+        enabled = false;
     }
 }
 
@@ -47,6 +62,6 @@ bool SweepCounter::overflowCheck() {
     return newFrequency < 2047;
 }
 
-float SweepCounter::getFrequency() {
+int SweepCounter::getFrequency() {
     return shadowFrequency;
 }
