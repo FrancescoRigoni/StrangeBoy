@@ -9,6 +9,11 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 #include "Devices/IoDevice.hpp"
+#include "Devices/Audio/Timer.hpp"
+#include "Devices/Audio/LengthCounter.hpp"
+#include "Devices/Audio/EnvelopeCounter.hpp"
+#include "Devices/Audio/SweepCounter.hpp"
+#include "Devices/Audio/CommonAudio.hpp"
 
 #define NR_10_SOUND_MODE_SWEEP               0xFF10
 #define NR_11_SOUND_MODE_LENGTH_DUTY         0xFF11
@@ -37,32 +42,17 @@ private:
     uint8_t soundModeFrequencyLow;
     uint8_t soundModeFrequencyHigh;
 
-    int channelNumber;
     bool channelEnabled;
 
-    uint16_t frequencyTimerDivisor;
-    float frequencyCounter = 0;
+    Timer frequencyTimer;
+    LengthCounter lengthCounter;
+    EnvelopeCounter envelopeCounter;
+    SweepCounter sweepCounter;
 
-    float lengthCounter = 0;
-    int length;
-    
-    float envelopeCounter = 0;
-    int envelopeTimerDivisor;
-    int envelopedVolume;
-
-    bool sweepEnabled;
-    float sweepCounter = 0;
-    uint16_t sweepShadowFrequency;
-
-    void trigger();
-    uint16_t getFrequency();
-    uint8_t getLength();
-
-    void sweepFrequencyCalculate();
+    void checkForTrigger();
 
 public:
-    SoundChannelSquareWave(int channelNumber,
-                           uint16_t regSweepAddress, 
+    SoundChannelSquareWave(uint16_t regSweepAddress, 
                            uint16_t regLengthDutyAddress,
                            uint16_t regEnvelopeAddress,
                            uint16_t regFreqLowAddress,
@@ -71,29 +61,10 @@ public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    int getChannelNumber() {
-        return channelNumber;
-    }
-
     void setChannelEnabled(bool);
     bool isChannelEnabled();
 
-    uint8_t getSoundDuty();
-
-    uint8_t getEnvelopedVolume();
-    int getEnvelopeTimerDivisor();
-    void addToEnvelopeTimerTicks(float);
-
-    void addToLengthTimerTicks(float);
-
-    uint16_t getFrequencyTimerDivisor();
-    float getFrequencyTimerTicks();
-    void addToFrequencyTimerTicks(float);
-
-    int getSweepTimerDivisor();
-    bool sweepUp();
-    int getSweepShifts();
-    void addToSweepTimerTicks(float);
+    float sample();
 };
 
 #endif

@@ -24,6 +24,7 @@ file(GLOB sources *.cpp
                   Cpu/*.cpp 
                   Memory/*.cpp 
                   Devices/*.cpp 
+                  Devices/Audio/*.cpp 
                   Util/*.cpp 
                   PPU/*.cpp 
                   UI/*.cpp

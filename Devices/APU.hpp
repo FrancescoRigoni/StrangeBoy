@@ -16,7 +16,7 @@
 
 class APU : public IoDevice {
 private:
-    long lastStepTime;
+    long lastBufferTime;
 
     uint8_t channelControl;
     uint8_t outputSelection;
@@ -28,18 +28,18 @@ private:
     SoundChannelWave *soundChannel3;
     SoundChannelNoise *soundChannel4;
 
-    struct AudioBuffer *generateSquareWaveBuffer(SoundChannelSquareWave *, long);
-    struct AudioBuffer *generateWaveBuffer(long);
-    struct AudioBuffer *generateNoiseBuffer(long);
-
-    uint16_t volumeToOutputVolume(uint16_t);
-    void generateSquareWaveSample(uint16_t *, SoundChannelSquareWave *soundChannel);
+    uint16_t volumeToOutputVolume(float);
 
     bool isTerminal1On();
     float getTerminal1Volume();
 
     bool isTerminal2On();
     float getTerminal2Volume();
+
+    bool soundChannel1ToTerminal1On();
+    bool soundChannel1ToTerminal2On();
+    bool soundChannel2ToTerminal1On();
+    bool soundChannel2ToTerminal2On();
 
 public:
     APU(SoundChannelSquareWave *, SoundChannelSquareWave *, SoundChannelWave *, SoundChannelNoise *, Sound *);

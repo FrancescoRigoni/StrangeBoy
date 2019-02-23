@@ -4,6 +4,7 @@
 #include "Devices/APU.hpp"
 #include "Util/ByteUtil.hpp"
 #include "Util/LogUtil.hpp"
+#include "Devices/Audio/CommonAudio.hpp"
 
 #define NR_52_ALL_ON_OFF_BIT    7
 #define NR_52_4_ON_OFF_BIT      3
@@ -11,14 +12,8 @@
 #define NR_52_2_ON_OFF_BIT      1
 #define NR_52_1_ON_OFF_BIT      0
 
-#define INPUT_MASTER_CLOCK_HZ   4194304.0
 
-#define SAMPLE_FREQUENCY        48000.0
 #define BYTES_PER_SAMPLE        (sizeof(int16_t) * 2)
-
-#define LENGTH_COUNTER_FREQ         256.0
-#define ENVELOPE_COUNTER_FREQ        64.0
-#define SWEEP_COUNTER_FREQ          128.0
 
 using namespace std;
 using namespace std::chrono;
@@ -39,315 +34,58 @@ APU::APU(SoundChannelSquareWave *soundChannel1,
     this->soundChannel3 = soundChannel3;
     this->soundChannel4 = soundChannel4;
 
-    lastStepTime = TIME_MS;
+    lastBufferTime = TIME_MS;
 }
 
 void APU::generateOneBuffer() {
-
-    //if (isBitClear(soundOnOff, NR_52_ALL_ON_OFF_BIT)) {
-        long millisecondsSinceLastBuffer = (TIME_MS - lastStepTime);
-        
-
-        struct AudioBuffer *channel1Buffer = 0;
-        struct AudioBuffer *channel2Buffer = 0;
-        struct AudioBuffer *channel3Buffer = 0;
-        struct AudioBuffer *channel4Buffer = 0;
-
-        channel1Buffer = generateSquareWaveBuffer(soundChannel1, millisecondsSinceLastBuffer);
-        channel2Buffer = generateSquareWaveBuffer(soundChannel2, millisecondsSinceLastBuffer);
-        channel3Buffer = generateWaveBuffer(millisecondsSinceLastBuffer);
-        channel4Buffer = generateNoiseBuffer(millisecondsSinceLastBuffer);
-
-        float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-        float samplesToGenerate = millisecondsSinceLastBuffer * samplesPerMillisecond;
-        int samplesInBuffer = samplesToGenerate * 2;
-
-        struct AudioBuffer *finalBuffer;
-        finalBuffer = new struct AudioBuffer;
-        finalBuffer->size = samplesInBuffer * sizeof(uint16_t);
-        finalBuffer->buffer = new uint16_t[samplesInBuffer];
-
-        for (int i = 0; i < samplesInBuffer; i++) {
-            uint16_t sampleFrom1 = channel1Buffer != 0 ? channel1Buffer->buffer[i] : 0;
-            uint16_t sampleFrom2 = channel2Buffer != 0 ? channel2Buffer->buffer[i] : 0;
-            uint16_t sampleFrom3 = channel3Buffer != 0 ? channel3Buffer->buffer[i] : 0;
-            uint16_t sampleFrom4 = channel4Buffer != 0 ? channel4Buffer->buffer[i] : 0;
-
-            finalBuffer->buffer[i] = (sampleFrom1 + sampleFrom2 + sampleFrom3 + sampleFrom4);
-        }
-
-        if (channel1Buffer != 0) {
-            delete[] channel1Buffer->buffer;
-            delete channel1Buffer;
-        }
-        if (channel2Buffer != 0) {
-            delete[] channel2Buffer->buffer;
-            delete channel2Buffer;
-        }
-        if (channel3Buffer != 0) {
-            delete[] channel3Buffer->buffer;
-            delete channel3Buffer;
-        }
-        if (channel4Buffer != 0) {
-            delete[] channel4Buffer->buffer;
-            delete channel4Buffer;
-        }
-        
-        sound->pushBuffer(finalBuffer);
-
-        lastStepTime = TIME_MS;
-
-    //}
-    // } else {
-    //     cout << "Sound off" << endl;
-    // }
-}
-
-struct AudioBuffer *APU::generateNoiseBuffer(long bufferDurationMilliseconds) {
-    if (!soundChannel4->isChannelEnabled()) return 0;
+    long millisecondsSinceLastBuffer = (TIME_MS - lastBufferTime);
 
     // Figure out how many samples to generate
-    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-    float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
-    float sampleIntervalMs = bufferDurationMilliseconds / samplesToGenerate;
+    float sampleIntervalMs = 1.0 / (SAMPLE_FREQUENCY / 1000.0);
+    float samplesToGenerate = millisecondsSinceLastBuffer / sampleIntervalMs;
+    int samplesInBuffer = samplesToGenerate * 2;
 
-    struct AudioBuffer *buffer = new struct AudioBuffer;
-    buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
-    buffer->buffer = new uint16_t[samplesToGenerate * 2];
-    memset(buffer->buffer, 0, buffer->size);
-    uint16_t *bufferPointer = buffer->buffer;
+    struct AudioBuffer *audioBuffer;
+    audioBuffer = new struct AudioBuffer;
+    audioBuffer->size = samplesInBuffer * sizeof(uint16_t);
+    audioBuffer->buffer = new uint16_t[samplesInBuffer];
+    uint16_t *bufferPointer = audioBuffer->buffer;
 
-    // Length counter is clocked at 256 Hz
-    float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
-    float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
+    for (int i = 0; i < samplesToGenerate; i++) {
+        float terminal1Output = 0;
+        float terminal2Output = 0;
 
-    // Envelope counter is clocked at 64 Hz
-    float envelopeDivisor = soundChannel4->getEnvelopeTimerDivisor();
-    float envelopeCounterTicksPerMilliseconds = (ENVELOPE_COUNTER_FREQ/envelopeDivisor)/ 1000.0;
-    float envelopeCounterTicksPerSample = envelopeCounterTicksPerMilliseconds * sampleIntervalMs;
+        float squareWave1Sample = soundChannel1->isChannelEnabled() ? soundChannel1->sample() : 0;
+        float squareWave2Sample = soundChannel2->isChannelEnabled() ? soundChannel2->sample() : 0;
 
-    float frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / (float)soundChannel4->getFrequencyTimerDivisor();
-    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-    float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
+        if (soundChannel1ToTerminal1On()) {
+            terminal1Output += squareWave1Sample;
+            terminal1Output += squareWave2Sample;
 
-    // Output sound 4 to SO1 terminal
-    bool outputToLeft = isBitSet(outputSelection, 3);
-    // Output sound 4 to SO2 terminal
-    bool outputToRight = isBitSet(outputSelection, 7);
+            terminal1Output *= getTerminal1Volume();
+        }
+        if (soundChannel1ToTerminal2On()) {
+            terminal2Output += squareWave1Sample;
+            terminal2Output += squareWave2Sample;
 
-    //cout << "Per sample: " << frequencyTimerTicksIncrementPerSample << endl;
-
-    for (int sample = 0; 
-         sample < samplesToGenerate && soundChannel4->isChannelEnabled(); 
-         sample += 1) {
-
-        uint16_t outputLeft = outputToLeft && !soundChannel4->getLSBOfLFSR() ? soundChannel4->getEnvelopedVolume()*getTerminal1Volume() : 0;
-        uint16_t outputRight = outputToRight && !soundChannel4->getLSBOfLFSR() ? soundChannel4->getEnvelopedVolume()*getTerminal2Volume() : 0;
-
-        *bufferPointer++ = volumeToOutputVolume(outputLeft);
-        *bufferPointer++ = volumeToOutputVolume(outputRight);
-
-        // Update all the timers
-        soundChannel4->addToLengthTimerTicks(lengthCounterTicksPerSample);
-        soundChannel4->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
-        soundChannel4->addToEnvelopeTimerTicks(envelopeCounterTicksPerSample);
-    }
-
-    return buffer;
-}
-
-struct AudioBuffer *APU::generateWaveBuffer(long bufferDurationMilliseconds) {
-    if (!soundChannel3->isChannelEnabled()) return 0;
-
-    // Figure out how many samples to generate
-    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-    float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
-    float sampleIntervalMs = bufferDurationMilliseconds / samplesToGenerate;
-
-    struct AudioBuffer *buffer = new struct AudioBuffer;
-    buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
-    buffer->buffer = new uint16_t[samplesToGenerate * 2];
-    memset(buffer->buffer, 0, buffer->size);
-    uint16_t *bufferPointer = buffer->buffer;
-
-    // Length counter is clocked at 256 Hz
-    float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
-    float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
-
-    float frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / (float)soundChannel3->getFrequencyTimerDivisor();
-    float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-    float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
-
-    // Output sound 3 to SO1 terminal
-    bool outputToLeft = isBitSet(outputSelection, 2);
-    // Output sound 3 to SO2 terminal
-    bool outputToRight = isBitSet(outputSelection, 6);
-
-    for (int sample = 0; 
-         sample < samplesToGenerate && soundChannel3->isChannelEnabled(); 
-         sample += 1) {
-
-        uint8_t waveSample = soundChannel3->readCurrentSample();
-
-        switch (soundChannel3->getOutputLevel()) {
-            case 0: waveSample >>= 4; break;
-            case 2: waveSample >>= 1; break;
-            case 3: waveSample >>= 2; break;
+            terminal2Output *= getTerminal2Volume();
         }
 
-        *bufferPointer++ = volumeToOutputVolume(((waveSample*outputToLeft)+getTerminal1Volume()) / 2.0);
-        *bufferPointer++ = volumeToOutputVolume(((waveSample*outputToRight)+getTerminal2Volume()) / 2.0);
+        uint16_t leftOutput = volumeToOutputVolume(terminal1Output);
+        uint16_t rightOutput = volumeToOutputVolume(terminal2Output);
 
-        // Update all the timers
-        soundChannel3->addToLengthTimerTicks(lengthCounterTicksPerSample);
-        soundChannel3->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
+        *bufferPointer++ = leftOutput;
+        *bufferPointer++ = rightOutput;
     }
 
-    return buffer;
+    lastBufferTime = TIME_MS;
+    
+    sound->pushBuffer(audioBuffer);
 
 }
 
-struct AudioBuffer *APU::generateSquareWaveBuffer(SoundChannelSquareWave *squareWaveChannel, 
-                                                  long bufferDurationMilliseconds) {
-
-    if (!squareWaveChannel->isChannelEnabled()) return 0;
-
-    // Figure out how many samples to generate
-    float samplesPerMillisecond = SAMPLE_FREQUENCY / 1000.0;
-    float samplesToGenerate = bufferDurationMilliseconds * samplesPerMillisecond;
-    float sampleIntervalMs = bufferDurationMilliseconds / samplesToGenerate;
-
-    struct AudioBuffer *buffer = new struct AudioBuffer;
-    buffer->size = samplesToGenerate * BYTES_PER_SAMPLE;
-    buffer->buffer = new uint16_t[samplesToGenerate * 2];
-    memset(buffer->buffer, 0, buffer->size);
-    uint16_t *bufferPointer = buffer->buffer;
-
-    // Length counter is clocked at 256 Hz
-    float lengthCounterClocksPerMilliseconds = LENGTH_COUNTER_FREQ / 1000.0;
-    float lengthCounterTicksPerSample = lengthCounterClocksPerMilliseconds * sampleIntervalMs;
-
-    // Envelope counter is clocked at 64 Hz
-    float envelopeDivisor = squareWaveChannel->getEnvelopeTimerDivisor();
-    float envelopeCounterTicksPerMilliseconds = (ENVELOPE_COUNTER_FREQ/envelopeDivisor)/ 1000.0;
-    float envelopeCounterTicksPerSample = envelopeCounterTicksPerMilliseconds * sampleIntervalMs;
-
-    // Sweep counter is clocked at 128 Hz, this frequency must be divided by the sweep counter divisor
-    float sweepDivisor = squareWaveChannel->getSweepTimerDivisor();
-    float sweepCounterTicksPerSample = 0;
-    if (sweepDivisor != 0) { 
-        float sweepCounterTicksPerMilliseconds = (SWEEP_COUNTER_FREQ/sweepDivisor) / 1000.0;
-        sweepCounterTicksPerSample = sweepCounterTicksPerMilliseconds * sampleIntervalMs;
-    }
-
-    for (int sample = 0; 
-         sample < samplesToGenerate && squareWaveChannel->isChannelEnabled(); 
-         sample += 1) {
-
-        generateSquareWaveSample(bufferPointer, squareWaveChannel);
-
-        // Frequency must be recalculated because of sweep
-        float frequencyTimerClocksPerSecond = INPUT_MASTER_CLOCK_HZ / squareWaveChannel->getFrequencyTimerDivisor();
-        float frequencyTimerClocksPerMillisecond = frequencyTimerClocksPerSecond / 1000.0;
-        float frequencyTimerTicksIncrementPerSample = frequencyTimerClocksPerMillisecond * sampleIntervalMs;
-        
-        // Update all the timers
-        squareWaveChannel->addToLengthTimerTicks(lengthCounterTicksPerSample);
-        squareWaveChannel->addToFrequencyTimerTicks(frequencyTimerTicksIncrementPerSample);
-        squareWaveChannel->addToEnvelopeTimerTicks(envelopeCounterTicksPerSample);
-        squareWaveChannel->addToSweepTimerTicks(sweepCounterTicksPerSample);
-
-        bufferPointer += 2;
-    }
-
-    return buffer;
-}
-
-void APU::generateSquareWaveSample(uint16_t *bufferPointer, SoundChannelSquareWave *soundChannel) {
-    bool outputToLeft = false;
-    bool outputToRight = false;
-    float volume = 0;
-
-    if (soundChannel->getChannelNumber() == 1) {
-        // Output sound 1 to SO1 terminal
-        outputToLeft = isBitSet(outputSelection, 0);
-        // Output sound 1 to SO2 terminal
-        outputToRight = isBitSet(outputSelection, 4);
-        volume = getTerminal1Volume();
-
-    } else if (soundChannel->getChannelNumber() == 2) {
-        // Output sound 2 to SO1 terminal
-        outputToLeft = isBitSet(outputSelection, 1);
-        // Output sound 2 to SO2 terminal
-        outputToRight = isBitSet(outputSelection, 5);
-        volume = getTerminal2Volume();
-    }
-
-    volume = (soundChannel->getEnvelopedVolume() + volume) / 2.0;
-
-    uint16_t leftVolume = volume * outputToLeft; // * isTerminal1On();
-    uint16_t rightVolume = volume * outputToRight; // * isTerminal2On();
-
-    leftVolume = volumeToOutputVolume(leftVolume);
-    rightVolume = volumeToOutputVolume(rightVolume);
-
-    int frequencyTimerTicksModulo8 = (int)soundChannel->getFrequencyTimerTicks() % 8;
-
-    switch (soundChannel->getSoundDuty()) {
-        case 0:
-            switch (frequencyTimerTicksModulo8) {
-                case 0: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 1: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 2: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 3: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 4: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 5: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 6: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 7: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-            }
-        break;
-        case 1:
-            switch (frequencyTimerTicksModulo8) {
-                case 0: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-                case 1: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 2: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 3: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 4: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 5: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 6: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 7: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-            }
-        break;
-        case 2:
-            switch (frequencyTimerTicksModulo8) {
-                case 0: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-                case 1: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 2: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 3: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 4: *bufferPointer++ =              0; *bufferPointer++ =               0; break;
-                case 5: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-                case 6: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-                case 7: *bufferPointer++ =     leftVolume; *bufferPointer++ =     rightVolume; break;
-            }
-        break;
-        case 3:
-            switch (frequencyTimerTicksModulo8) {
-                case 0: *bufferPointer++ =              0; *bufferPointer++ =                0; break;
-                case 1: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 2: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 3: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 4: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 5: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 6: *bufferPointer++ =     leftVolume; *bufferPointer++ =      rightVolume; break;
-                case 7: *bufferPointer++ =              0; *bufferPointer++ =                0; break;
-            }
-        break;
-    }
-}
-
-uint16_t APU::volumeToOutputVolume(uint16_t volume) {
-    float volumeRatio = (float) volume / 15.0f;
-    return 3000 * volumeRatio;
+uint16_t APU::volumeToOutputVolume(float volume) {
+    return 3000 * volume;
 }
 
 bool APU::isTerminal1On() {
@@ -368,10 +106,27 @@ float APU::getTerminal2Volume() {
     return volume/7.0;
 }
 
+bool APU::soundChannel1ToTerminal1On() {
+    return isBitSet(outputSelection, 0);
+}
+
+bool APU::soundChannel1ToTerminal2On() {
+    return isBitSet(outputSelection, 4);
+}
+
+bool APU::soundChannel2ToTerminal1On() {
+    return isBitSet(outputSelection, 1);
+}
+
+bool APU::soundChannel2ToTerminal2On() {
+    return isBitSet(outputSelection, 5);
+}
+
 void APU::write8(uint16_t address, uint8_t value) {
     switch (address) {
         case NR_50_CHANNEL_CONTROL: {
-            channelControl = value; 
+            cout << "Write channel control: " << cout8Hex(value) << endl;
+            channelControl = value;
             break;
         }
         case NR_51_OUTPUT_SELECTION: {
@@ -379,6 +134,7 @@ void APU::write8(uint16_t address, uint8_t value) {
             break;
         }
         case NR_52_SOUND_ON_OFF: {
+            cout << "Write sound on/off: " << cout8Hex(value) << endl;
             soundOnOff = value; 
             if (isBitSet(soundOnOff, 7)) channelControl |= 0x88;
             break;
