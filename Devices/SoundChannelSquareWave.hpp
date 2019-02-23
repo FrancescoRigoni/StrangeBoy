@@ -62,7 +62,6 @@ public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    void setChannelEnabled(bool);
     bool isChannelEnabled();
 
     float sample();

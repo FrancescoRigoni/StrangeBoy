@@ -57,22 +57,20 @@ void APU::generateOneBuffer() {
 
         float squareWave1Sample = soundChannel1->isChannelEnabled() ? soundChannel1->sample() : 0;
         float squareWave2Sample = soundChannel2->isChannelEnabled() ? soundChannel2->sample() : 0;
+        float waveChannelSample = soundChannel3->isChannelEnabled() ? soundChannel3->sample() : 0;
 
-        if (soundChannel1ToTerminal1On()) {
-            terminal1Output += squareWave1Sample;
-            terminal1Output += squareWave2Sample;
+         // cout << "squareWave1Sample: " << squareWave1Sample << endl;
+         // cout << "waveChannelSample: " << waveChannelSample << endl;
 
-            terminal1Output *= getTerminal1Volume();
-        }
-        if (soundChannel1ToTerminal2On()) {
-            terminal2Output += squareWave1Sample;
-            terminal2Output += squareWave2Sample;
+        if (soundChannel1ToTerminal1On()) terminal1Output += squareWave1Sample;
+        if (soundChannel1ToTerminal2On()) terminal2Output += squareWave1Sample;
+        if (soundChannel2ToTerminal1On()) terminal1Output += squareWave2Sample;
+        if (soundChannel2ToTerminal2On()) terminal2Output += squareWave2Sample;
+        if (soundChannel3ToTerminal1On()) terminal1Output += waveChannelSample;
+        if (soundChannel3ToTerminal2On()) terminal2Output += waveChannelSample;
 
-            terminal2Output *= getTerminal2Volume();
-        }
-
-        uint16_t leftOutput = volumeToOutputVolume(terminal1Output);
-        uint16_t rightOutput = volumeToOutputVolume(terminal2Output);
+        uint16_t leftOutput = volumeToOutputVolume(terminal1Output*getTerminal1Volume());
+        uint16_t rightOutput = volumeToOutputVolume(terminal2Output*getTerminal2Volume());
 
         *bufferPointer++ = leftOutput;
         *bufferPointer++ = rightOutput;
@@ -122,10 +120,18 @@ bool APU::soundChannel2ToTerminal2On() {
     return isBitSet(outputSelection, 5);
 }
 
+bool APU::soundChannel3ToTerminal1On() {
+    return isBitSet(outputSelection, 2);
+}
+
+bool APU::soundChannel3ToTerminal2On() {
+    return isBitSet(outputSelection, 6);
+}
+
+
 void APU::write8(uint16_t address, uint8_t value) {
     switch (address) {
         case NR_50_CHANNEL_CONTROL: {
-            cout << "Write channel control: " << cout8Hex(value) << endl;
             channelControl = value;
             break;
         }
@@ -134,7 +140,6 @@ void APU::write8(uint16_t address, uint8_t value) {
             break;
         }
         case NR_52_SOUND_ON_OFF: {
-            cout << "Write sound on/off: " << cout8Hex(value) << endl;
             soundOnOff = value; 
             if (isBitSet(soundOnOff, 7)) channelControl |= 0x88;
             break;

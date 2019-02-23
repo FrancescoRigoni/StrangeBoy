@@ -9,6 +9,8 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 #include "Devices/IoDevice.hpp"
+#include "Devices/Audio/LengthCounter.hpp"
+#include "Devices/Audio/Timer.hpp"
 
 #define NR_30_SOUND_ON_OFF                   0xFF1A
 #define NR_31_SOUND_LENGTH                   0xFF1B
@@ -33,33 +35,19 @@ private:
 
     bool channelEnabled;
     int position = 0;
-
     uint8_t sampleBuffer = 0;
 
-    uint16_t frequencyTimerDivisor;
-    float frequencyCounter = 0;
+    Timer frequencyTimer;
+    LengthCounter lengthCounter;
 
-    float lengthCounter = 0;
-    int length;
-
-    void trigger();
-    uint16_t getFrequency();
-    uint8_t getLength();
+    void checkForTrigger();
 
 public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
     bool isChannelEnabled();
-
-    uint8_t readCurrentSample();
-    uint8_t getOutputLevel();
-
-    void addToLengthTimerTicks(float);
-
-    uint16_t getFrequencyTimerDivisor();
-    float getFrequencyTimerTicks();
-    void addToFrequencyTimerTicks(float);
+    float sample();
 };
 
 #endif

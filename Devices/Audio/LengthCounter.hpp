@@ -11,7 +11,7 @@ private:
     int counterPeriod;
 
 public:
-    void load(int data);
+    void load(int, int);
     void update();
     bool isEnabled();
 };

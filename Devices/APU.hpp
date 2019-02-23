@@ -40,6 +40,8 @@ private:
     bool soundChannel1ToTerminal2On();
     bool soundChannel2ToTerminal1On();
     bool soundChannel2ToTerminal2On();
+    bool soundChannel3ToTerminal1On();
+    bool soundChannel3ToTerminal2On();
 
 public:
     APU(SoundChannelSquareWave *, SoundChannelSquareWave *, SoundChannelWave *, SoundChannelNoise *, Sound *);

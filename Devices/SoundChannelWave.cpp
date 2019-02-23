@@ -2,73 +2,49 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 
+#define FREQUENCY ((uint16_t)soundRegFrequencyLow | ((uint16_t)soundRegFrequencyHigh & 0b111) << 8)
+#define FREQUENCY_TO_PERIOD(freq) ((2048-freq)*2)
+#define OUTPUT_LEVEL ((soundRegOutputLevel & 0b1100000) >> 5)
+#define LENGTH_ON ((soundRegFrequencyHigh & 0b1000000) >> 6)
+
 bool SoundChannelWave::isChannelEnabled() {
     return channelEnabled && isBitSet(soundRegOnOff, 7);
 }
 
-uint8_t SoundChannelWave::getOutputLevel() {
-    return (soundRegOutputLevel & 0b1100000) >> 5;
-}
+float SoundChannelWave::sample() {
+    lengthCounter.update();
+    if (LENGTH_ON && !lengthCounter.isEnabled()) return 0;
 
-uint16_t SoundChannelWave::getFrequency() {
-    return (uint16_t) soundRegFrequencyLow | (((uint16_t)soundRegFrequencyHigh & 0b111) << 8);
-}
-
-float SoundChannelWave::getFrequencyTimerTicks() {
-    return frequencyCounter;
-}
-
-void SoundChannelWave::addToFrequencyTimerTicks(float ticks) {
-    frequencyCounter += ticks;
-    if (frequencyCounter > 1.0) {
-        // One clock has been generated
-        frequencyCounter -= 1.0;
+    bool updated = frequencyTimer.update();
+    if (updated) {
         position++;
         position %= 32;
 
         bool highNibble = (position % 2) == 0;
         if (highNibble) sampleBuffer = highNibbleOf(waveRam[position]);
         else sampleBuffer = lowNibbleOf(waveRam[position]);
-    }
-}
 
-uint8_t SoundChannelWave::readCurrentSample() {
-    return sampleBuffer;
-}
-
-uint16_t SoundChannelWave::getFrequencyTimerDivisor() {
-    return frequencyTimerDivisor;
-}
-
-uint8_t SoundChannelWave::getLength() {
-    return soundRegLength;
-}
-
-void SoundChannelWave::addToLengthTimerTicks(float ticks) {
-    lengthCounter += ticks;
-    if (lengthCounter >= 1 && length > 0) {
-        // One clock has been generated
-        lengthCounter = lengthCounter - 1.0;
-        length--;
-        bool shouldStopAfterZeroingLength = isBitSet(soundRegFrequencyHigh, 6);
-        if (length == 0 && shouldStopAfterZeroingLength) {
-            channelEnabled = false;
+        int outputLevel = OUTPUT_LEVEL;
+        switch(outputLevel) {
+            case 0: sampleBuffer >>= 4; break;
+            case 2: sampleBuffer >>= 1; break;
+            case 3: sampleBuffer >>= 2; break;
         }
     }
+    return (float)sampleBuffer/16.0;
 }
 
-void SoundChannelWave::trigger() {
-    length = (256-getLength());
-    lengthCounter = 0;
-
-    uint16_t newFrequencyTimerDivisor = (2048-getFrequency()) * 2;
-    if (newFrequencyTimerDivisor != frequencyTimerDivisor) {
-        frequencyTimerDivisor = newFrequencyTimerDivisor;
-        frequencyCounter = 0;
+void SoundChannelWave::checkForTrigger() {
+    if (isBitClear(soundRegFrequencyHigh, 7)) {
+        return;
     }
 
-    position = 0;
     channelEnabled = true;
+    lengthCounter.load(256, soundRegLength);
+
+    frequencyTimer.setPeriod(FREQUENCY_TO_PERIOD(FREQUENCY));
+
+    position = 0;
 }
 
 void SoundChannelWave::write8(uint16_t address, uint8_t value) {
@@ -77,8 +53,7 @@ void SoundChannelWave::write8(uint16_t address, uint8_t value) {
 
     } else if (address == NR_31_SOUND_LENGTH) {
         soundRegLength = value;
-        // Length can be reloaded at any time
-        length = 256-getLength();
+        lengthCounter.load(256, soundRegLength);
 
     } else if (address == NR_32_SOUND_OUTPUT_LEVEL) {
         soundRegOutputLevel = value;
@@ -88,9 +63,7 @@ void SoundChannelWave::write8(uint16_t address, uint8_t value) {
 
     } else if (address == NR_34_SOUND_MODE_FREQ_HI) {
         soundRegFrequencyHigh = value;
-        if (isBitSet(soundRegFrequencyHigh, 7)) {
-            trigger();
-        }
+        checkForTrigger();
 
     } else if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {
         waveRam[address-WAVE_RAM_START] = value;

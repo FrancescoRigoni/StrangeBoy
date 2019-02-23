@@ -13,7 +13,7 @@ private:
 public:
     void setPeriod(int);
     void updatePeriod(int);
-    void update();
+    bool update();
     long getOutputClockTicks();
 };
 

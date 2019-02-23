@@ -15,12 +15,14 @@ long Timer::getOutputClockTicks() {
     return outputClockTicks;
 }
 
-void Timer::update() {
+bool Timer::update() {
     int newValue = value - MASTER_CLOCK_TICKS_PER_SAMPLE;
     if (newValue <= 0) {
         value = period + newValue;
         outputClockTicks++;
+        return true;
     } else {
         value = newValue;
+        return false;
     }
 }

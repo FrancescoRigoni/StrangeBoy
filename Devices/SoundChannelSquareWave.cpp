@@ -2,10 +2,6 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 
-#define LENGTH_COUNTER_FREQ         256.0
-#define ENVELOPE_COUNTER_FREQ        64.0
-#define SWEEP_COUNTER_FREQ          128.0
-
 #define FREQUENCY ((uint16_t)soundModeFrequencyLow | ((uint16_t)soundModeFrequencyHigh & 0b111) << 8)
 #define FREQUENCY_TO_PERIOD(freq) ((2048-freq)*4)
 #define DUTY ((soundModeLengthDuty & 0b11000000) >> 6)
@@ -34,10 +30,6 @@ bool SoundChannelSquareWave::isChannelEnabled() {
     return channelEnabled;
 }
 
-void SoundChannelSquareWave::setChannelEnabled(bool enabled) {
-    channelEnabled = enabled;
-}
-
 void SoundChannelSquareWave::checkForTrigger() { 
     if (isBitClear(soundModeFrequencyHigh, 7)) {
         return;
@@ -48,7 +40,7 @@ void SoundChannelSquareWave::checkForTrigger() {
     // Calculate new frequency period
     frequencyTimer.setPeriod(FREQUENCY_TO_PERIOD(FREQUENCY));
     // Set length counter
-    lengthCounter.load(LENGTH);
+    lengthCounter.load(64, LENGTH);
     // Set envelope counter
     envelopeCounter.load(ENV_VOLUME, ENV_UP, ENV_PERIOD);
     // Set sweep counter
@@ -97,10 +89,11 @@ float SoundChannelSquareWave::sample() {
 void SoundChannelSquareWave::write8(uint16_t address, uint8_t value) {
     if (address == regSweepAddress) {
         soundModeSweep = value;
+        
     }
     else if (address == regLengthDutyAddress) {
         soundModeLengthDuty = value;
-        lengthCounter.load(LENGTH);
+        lengthCounter.load(64, LENGTH);
     }
     else if (address == regEnvelopeAddress) {
         soundModeEnvelope = value;

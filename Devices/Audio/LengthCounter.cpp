@@ -4,8 +4,8 @@
 #define LENGTH_COUNTER_FREQUENCY_HZ             256.0
 #define LENGTH_COUNTER_INCREMENTS_PER_SAMPLE    ((LENGTH_COUNTER_FREQUENCY_HZ / 1000.0) * SAMPLE_INTERVAL_MS)
 
-void LengthCounter::load(int data) {
-    counterPeriod = 64-data;
+void LengthCounter::load(int base, int data) {
+    counterPeriod = base-data;
     counterValue = counterPeriod;
     clockValue = 0;
 }
