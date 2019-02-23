@@ -42,15 +42,19 @@ private:
     bool soundChannel2ToTerminal2On();
     bool soundChannel3ToTerminal1On();
     bool soundChannel3ToTerminal2On();
+    bool soundChannel4ToTerminal1On();
+    bool soundChannel4ToTerminal2On();
 
 public:
-    APU(SoundChannelSquareWave *, SoundChannelSquareWave *, SoundChannelWave *, SoundChannelNoise *, Sound *);
+    APU(SoundChannelSquareWave *, 
+        SoundChannelSquareWave *, 
+        SoundChannelWave *, 
+        SoundChannelNoise *, 
+        Sound *);
 
     void generateOneBuffer();
-
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
-
 };
 
 #endif

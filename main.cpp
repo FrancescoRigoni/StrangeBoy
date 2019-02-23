@@ -181,7 +181,6 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
-        // Generate audio buffer for one frame
         apu.generateOneBuffer();
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;

@@ -58,6 +58,7 @@ void APU::generateOneBuffer() {
         float squareWave1Sample = soundChannel1->isChannelEnabled() ? soundChannel1->sample() : 0;
         float squareWave2Sample = soundChannel2->isChannelEnabled() ? soundChannel2->sample() : 0;
         float waveChannelSample = soundChannel3->isChannelEnabled() ? soundChannel3->sample() : 0;
+        float noiseChannelSample = soundChannel4->isChannelEnabled() ? soundChannel4->sample() : 0;
 
          // cout << "squareWave1Sample: " << squareWave1Sample << endl;
          // cout << "waveChannelSample: " << waveChannelSample << endl;
@@ -68,6 +69,8 @@ void APU::generateOneBuffer() {
         if (soundChannel2ToTerminal2On()) terminal2Output += squareWave2Sample;
         if (soundChannel3ToTerminal1On()) terminal1Output += waveChannelSample;
         if (soundChannel3ToTerminal2On()) terminal2Output += waveChannelSample;
+        if (soundChannel4ToTerminal1On()) terminal1Output += noiseChannelSample;
+        if (soundChannel4ToTerminal2On()) terminal2Output += noiseChannelSample;
 
         uint16_t leftOutput = volumeToOutputVolume(terminal1Output*getTerminal1Volume());
         uint16_t rightOutput = volumeToOutputVolume(terminal2Output*getTerminal2Volume());
@@ -126,6 +129,14 @@ bool APU::soundChannel3ToTerminal1On() {
 
 bool APU::soundChannel3ToTerminal2On() {
     return isBitSet(outputSelection, 6);
+}
+
+bool APU::soundChannel4ToTerminal1On() {
+    return isBitSet(outputSelection, 3);
+}
+
+bool APU::soundChannel4ToTerminal2On() {
+    return isBitSet(outputSelection, 7);
 }
 
 
