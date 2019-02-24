@@ -42,6 +42,17 @@ void Screen::run() {
     drawNextLine();
 }
 
+void Screen::resetToFirstLine() {
+    unique_lock<mutex> lock(linesMutex);
+    currentScanLine = 0;
+    while (!linesQueue.empty())
+    {
+        uint8_t *line = linesQueue.front();
+        delete[] line;
+        linesQueue.pop();
+    }
+}
+
 void Screen::drawNextLine() {
     uint8_t *pixels = popLine();
     if (pixels == 0) return;

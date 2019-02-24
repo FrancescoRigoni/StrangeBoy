@@ -74,6 +74,8 @@ public:
     bool isWindowOn();
     bool isSpritesOn();
 
+    void setCurrentLine(uint8_t);
+
     int spriteHeightPx();
 };
 

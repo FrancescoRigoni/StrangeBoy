@@ -81,7 +81,7 @@ void PPU::nextState() {
         // Increment line number we are about to draw, reset to line zero if it overflows.
         uint8_t line = lcdRegs->read8(LY);
         line = (line+1)%SCREEN_HEIGHT_INCLUDING_VBLANK;
-        lcdRegs->write8(LY, line);
+        lcdRegs->setCurrentLine(line);
 
         // Set the ly, lyc coincidence bit if we are about to draw the lyc line.
         uint8_t lyc = lcdRegs->read8(LYC);
@@ -130,6 +130,9 @@ void PPU::doDrawLine() {
 
     // Read line from LY register
     uint8_t line = lcdRegs->read8(LY);
+    if (line == 0) {
+        screen->resetToFirstLine();
+    }
 
     if (line < SCREEN_HEIGHT_PX) {
         uint8_t *pixelsForLine = new uint8_t[SCREEN_WIDTH_PX];
@@ -145,7 +148,7 @@ void PPU::doDrawLine() {
             drawSpritesPixels(line, pixelsForLine);
         }
 
-        // Filter out the colors indexes
+        // Filter out the color indexes
         for (int i = 0; i < SCREEN_WIDTH_PX; i++) {
             pixelsForLine[i] = pixelsForLine[i] & 0b11;
         }

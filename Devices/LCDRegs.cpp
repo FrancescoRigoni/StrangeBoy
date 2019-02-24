@@ -40,12 +40,16 @@ bool LCDRegs::inVBlank()  {
     return (stat & 0b00000011) == 0b00000001;
 }
 
+void LCDRegs::setCurrentLine(uint8_t line) {
+    this->ly = line;
+}
+
 void LCDRegs::write8(uint16_t address, uint8_t value) {
     if (address == STAT) this->stat = value;
     else if (address == LCDC) this->lcdc = value;
     else if (address == SCY) this->scy = value;
     else if (address == SCX) this->scx = value;
-    else if (address == LY) this->ly = value;
+    else if (address == LY) this->ly = 0;
     else if (address == LYC) this->lyc = value;
     else if (address == WIN_X) this->windowX = value;
     else if (address == WIN_Y) this->windowY = value;

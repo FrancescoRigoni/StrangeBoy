@@ -25,6 +25,7 @@ private:
     void drawNextLine();
 
 public:
+    void resetToFirstLine();
     void pushLine(uint8_t *);
     uint8_t *popLine();
     void run();
