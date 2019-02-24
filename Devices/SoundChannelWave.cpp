@@ -47,6 +47,10 @@ void SoundChannelWave::checkForTrigger() {
     position = 0;
 }
 
+void SoundChannelWave::updatePeriod() {
+    frequencyTimer.updatePeriod(FREQUENCY_TO_PERIOD(FREQUENCY));
+}
+
 void SoundChannelWave::write8(uint16_t address, uint8_t value) {
     if (address == NR_30_SOUND_ON_OFF) {
         soundRegOnOff = value;
@@ -60,9 +64,11 @@ void SoundChannelWave::write8(uint16_t address, uint8_t value) {
 
     } else if (address == NR_33_SOUND_MODE_FREQ_LO) {
         soundRegFrequencyLow = value;
+        updatePeriod();
 
     } else if (address == NR_34_SOUND_MODE_FREQ_HI) {
         soundRegFrequencyHigh = value;
+        updatePeriod();
         checkForTrigger();
 
     } else if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {

@@ -51,6 +51,7 @@ private:
 
     void checkForTrigger();
     void updateFrequencyRegisters(int);
+    void updateFrequencyPeriod();
 
 public:
     SoundChannelSquareWave(uint16_t regSweepAddress, 

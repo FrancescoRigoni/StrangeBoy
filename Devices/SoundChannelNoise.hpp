@@ -29,22 +29,21 @@ private:
 
     bool channelEnabled;
 
-    uint16_t lfsr;
-    bool lfsrOutput;
+    uint16_t lfsr16;
+    uint16_t lfsr8;
 
     FrequencyCounter frequencyTimer;
     LengthCounter lengthCounter;
     EnvelopeCounter envelopeCounter;
 
     void checkForTrigger();
+    void updatePeriod();
 
 public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    bool getLSBOfLFSR();
     bool isChannelEnabled();
-
     float sample();
 };
 

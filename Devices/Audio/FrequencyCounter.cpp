@@ -1,5 +1,6 @@
 
 #include "Devices/Audio/FrequencyCounter.hpp"
+#include "Util/LogUtil.hpp"
 
 void FrequencyCounter::setPeriod(int period) {
     this->period = period;

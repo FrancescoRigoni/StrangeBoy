@@ -53,6 +53,10 @@ void SoundChannelSquareWave::updateFrequencyRegisters(int frequency) {
     soundModeFrequencyHigh |= (frequency & 0b11100000000) >> 8;
 }
 
+void SoundChannelSquareWave::updateFrequencyPeriod() {
+    frequencyTimer.updatePeriod(FREQUENCY_TO_PERIOD(FREQUENCY));
+}
+
 float SoundChannelSquareWave::sample() {
     if (sweepCounter.isEnabled()) {
         bool updated = sweepCounter.update();
@@ -89,7 +93,7 @@ float SoundChannelSquareWave::sample() {
 void SoundChannelSquareWave::write8(uint16_t address, uint8_t value) {
     if (address == regSweepAddress) {
         soundModeSweep = value;
-        
+        sweepCounter.load(FREQUENCY, !SWEEP_DOWN, SWEEP_PERIOD, SWEEP_SHIFTS);
     }
     else if (address == regLengthDutyAddress) {
         soundModeLengthDuty = value;
@@ -101,9 +105,11 @@ void SoundChannelSquareWave::write8(uint16_t address, uint8_t value) {
     }
     else if (address == regFreqLowAddress) {
         soundModeFrequencyLow = value;
+        updateFrequencyPeriod();
     }
     else if (address == regFreqHighAddress) {
         soundModeFrequencyHigh = value;
+        updateFrequencyPeriod();
         checkForTrigger();
     }
 }

@@ -41,6 +41,7 @@ private:
     LengthCounter lengthCounter;
 
     void checkForTrigger();
+    void updatePeriod();
 
 public:
     virtual void write8(uint16_t, uint8_t);

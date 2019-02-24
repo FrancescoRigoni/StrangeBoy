@@ -12,10 +12,6 @@
 #define POLY_COUNTER_STEP       ((soundModePolyCounter & 0b1000) >> 3)
 #define DIVIDING_RATIO          (soundModePolyCounter & 0b111)
 
-bool SoundChannelNoise::getLSBOfLFSR() {
-    return isBitSet(lfsr, 0);
-}
-
 bool SoundChannelNoise::isChannelEnabled() {
     return channelEnabled;
 }
@@ -27,6 +23,17 @@ void SoundChannelNoise::checkForTrigger() {
 
     channelEnabled = true;
 
+    updatePeriod();
+    // Set length counter
+    lengthCounter.load(64, LENGTH);
+    // Set envelope counter
+    envelopeCounter.load(ENV_VOLUME, ENV_UP, ENV_PERIOD);
+
+    lfsr16 = 0x7FFF;
+    lfsr8 = 0x7F;
+}
+
+void SoundChannelNoise::updatePeriod() {
     int dividingRatio = DIVIDING_RATIO;
     int frequencyPeriod;
     switch (dividingRatio) {
@@ -41,14 +48,7 @@ void SoundChannelNoise::checkForTrigger() {
     }
 
     frequencyPeriod <<= SHIFT_CLOCK_FREQUENCY;
-
     frequencyTimer.setPeriod(frequencyPeriod);
-    // Set length counter
-    lengthCounter.load(64, LENGTH);
-    // Set envelope counter
-    envelopeCounter.load(ENV_VOLUME, ENV_UP, ENV_PERIOD);
-
-    lfsr = 0x7FFF;
 }
 
 float SoundChannelNoise::sample() {
@@ -59,18 +59,33 @@ float SoundChannelNoise::sample() {
 
     bool updated = frequencyTimer.update();
     if (updated) {
-        int bit0 = lfsr & 0b01;
-        int bit1 = (lfsr & 0b10) >> 1;
-        int bitResult = bit0 ^ bit1;
-        lfsr >>= 1;
-        lfsr |= (bitResult ? 0x4000 : 0x0000);
         if (POLY_COUNTER_STEP == 1) {
-            lfsr &= ~0x40;
-            lfsr |= 0x40;
+            int bit0 = lfsr8 & 0b01;
+            int bit1 = (lfsr8 & 0b10) >> 1;
+            int bitResult = bit0 ^ bit1;
+            lfsr8 >>= 1;
+            lfsr8 |= (bitResult ? 0x40 : 0x00);
+
+            return envelopeCounter.getVolume() * !bitResult;
+
+        } else {
+            int bit0 = lfsr16 & 0b01;
+            int bit1 = (lfsr16 & 0b10) >> 1;
+            int bitResult = bit0 ^ bit1;
+            lfsr16 >>= 1;
+            lfsr16 |= (bitResult ? 0x4000 : 0x0000);
+
+            return envelopeCounter.getVolume() * !bitResult;
+        }
+    } else {
+        if (POLY_COUNTER_STEP == 1) {
+            int bit0 = lfsr8 & 0b01;
+            return envelopeCounter.getVolume() * bit0;
+        } else {
+            int bit0 = lfsr16 & 0b01;
+            return envelopeCounter.getVolume() * bit0;
         }
     }
-
-    return envelopeCounter.getVolume() * (lfsr & 0b1);
 }
 
 void SoundChannelNoise::write8(uint16_t address, uint8_t value) {
@@ -83,6 +98,7 @@ void SoundChannelNoise::write8(uint16_t address, uint8_t value) {
     }
     else if (address == NR_43_SOUND_MODE_POLY_COUNTER) {
         soundModePolyCounter = value;
+        updatePeriod();
     }
     else if (address == NR_44_SOUND_MODE_FLAGS) {
         soundModeFlags = value;
