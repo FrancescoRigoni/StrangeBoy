@@ -1,5 +1,4 @@
 #include "Devices/DivReg.hpp"
-#include "Util/LogUtil.hpp"
 
 #define DIV_REG_INCREMENTS_PER_MILLISECOND (16384.0 / 1000.0)
 

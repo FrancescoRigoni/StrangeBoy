@@ -21,6 +21,7 @@
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
+#include "Devices/Timer.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/SoundChannelWave.hpp"
 #include "Devices/SoundChannelNoise.hpp"
@@ -97,6 +98,8 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     LCDRegs lcdRegs;
     InterruptFlags interruptFlags;
     DivReg divReg;
+    Timer timer(&interruptFlags);
+
 
     SoundChannelSquareWave soundChannel1(NR_10_SOUND_MODE_SWEEP, 
                                          NR_11_SOUND_MODE_LENGTH_DUTY,
@@ -130,6 +133,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     memory.registerIoDevice(IF, &interruptFlags);
     memory.registerIoDevice(INTERRUPTS_ENABLE_REG, &interruptFlags);
     memory.registerIoDevice(DIV_REG, &divReg);
+    memory.registerIoDevice(TIMA, &timer);
+    memory.registerIoDevice(TMA, &timer);
+    memory.registerIoDevice(TAC, &timer);
 
     memory.registerIoDevice(NR_10_SOUND_MODE_SWEEP, &soundChannel1);
     memory.registerIoDevice(NR_11_SOUND_MODE_LENGTH_DUTY, &soundChannel1);
@@ -178,6 +184,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             cpu.cycle(cycles);
             ppu.nextState();
             divReg.increment();
+            timer.increment();
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 

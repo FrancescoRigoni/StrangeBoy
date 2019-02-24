@@ -896,19 +896,27 @@ void Cpu::acknowledgeInterrupts() {
         regPC = INTERRUPT_HANDLER_JOYPAD;
         halted = false;
 
+    } else if (interruptFlags->acknowledgeTimerInterrupt()) {
+        interruptMasterEnable = 0;
+        push16(regPC);
+        regPC = INTERRUPT_HANDLER_TIMER;
+        halted = false;
+
     }
 
     /*
     Priority:
     V-Blank
     LCDC Status
-    Timer Overflow Serial Transfer
+    Timer Overflow 
+    Serial Transfer
     Hi-Lo of P10-P13
     */
 }
 
 void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
+
     do {
         // Check for interrupts
         if (interruptMasterEnable == 2) {

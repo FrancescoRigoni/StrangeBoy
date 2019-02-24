@@ -61,3 +61,19 @@ bool InterruptFlags::acknowledgeJoypadInterrupt() {
     }
     return false;
 }
+
+void InterruptFlags::interruptTimer() {
+    if (isBitSet(enableMask, IE_BIT_TIMER)) {
+        setBit(IF_BIT_TIMER, &flags);
+    }
+}
+
+
+bool InterruptFlags::acknowledgeTimerInterrupt() {
+    if (isBitSet(flags, IF_BIT_TIMER) && 
+        isBitSet(enableMask, IE_BIT_TIMER)) {
+        resetBit(IF_BIT_TIMER, &flags);
+        return true;
+    }
+    return false;
+}

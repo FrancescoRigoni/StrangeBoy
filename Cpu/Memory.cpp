@@ -51,6 +51,10 @@ void Memory::write16(uint16_t address, uint16_t value) {
 }
 
 void Memory::write8(uint16_t address, uint8_t value) {
+    if (address == 0xFF01 || address == 0xFF02) {
+        cout << "Serial!" << endl;
+    }
+
     auto ioMapping = ioMap.find(address);
     if (ioMapping != ioMap.end()) {
         ioMap[address]->write8(address, value);

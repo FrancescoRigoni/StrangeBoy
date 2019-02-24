@@ -6,9 +6,6 @@
 bool Mbc1::write8(uint16_t address, uint8_t value) {
     if (address >= 0x0000 && address <= 0x1FFF) {
         ramEnabled = lowNibbleOf(value) == 0xA;
-        if (isRamEnabled()) {
-            //cout << "RAM is enabled" << endl;
-        }
         return true;
 
     } else if (address >= 0x2000 && address <= 0x3FFF) {
