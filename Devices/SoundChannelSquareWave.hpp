@@ -9,7 +9,7 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 #include "Devices/IoDevice.hpp"
-#include "Devices/Audio/Timer.hpp"
+#include "Devices/Audio/FrequencyCounter.hpp"
 #include "Devices/Audio/LengthCounter.hpp"
 #include "Devices/Audio/EnvelopeCounter.hpp"
 #include "Devices/Audio/SweepCounter.hpp"
@@ -44,7 +44,7 @@ private:
 
     bool channelEnabled;
 
-    Timer frequencyTimer;
+    FrequencyCounter frequencyTimer;
     LengthCounter lengthCounter;
     EnvelopeCounter envelopeCounter;
     SweepCounter sweepCounter;

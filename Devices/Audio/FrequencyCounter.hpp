@@ -1,10 +1,10 @@
 
-#ifndef _TIMER_HPP_
-#define _TIMER_HPP_
+#ifndef _FREQUENCYCOUNTER_HPP_
+#define _FREQUENCYCOUNTER_HPP_
 
 #include "Devices/Audio/CommonAudio.hpp"
 
-class Timer {
+class FrequencyCounter {
 private:
     int period = 0;
     int value = 0;

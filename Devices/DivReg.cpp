@@ -23,7 +23,7 @@ void DivReg::increment() {
     long msSinceLastIncrement = now - lastIncrement;
     int increments = DIV_REG_INCREMENTS_PER_MILLISECOND * msSinceLastIncrement;
 
-    value+=increments;
+    value += increments;
 
     lastIncrement = chrono::duration_cast<chrono::milliseconds> 
             (chrono::system_clock::now().time_since_epoch()).count();

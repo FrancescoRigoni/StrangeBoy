@@ -48,7 +48,7 @@ void SoundChannelNoise::checkForTrigger() {
     // Set envelope counter
     envelopeCounter.load(ENV_VOLUME, ENV_UP, ENV_PERIOD);
 
-    lfsr = 0xFFFF;
+    lfsr = 0x7FFF;
 }
 
 float SoundChannelNoise::sample() {
@@ -69,8 +69,6 @@ float SoundChannelNoise::sample() {
             lfsr |= 0x40;
         }
     }
-
-    //cout << "Noise: " << (envelopeCounter.getVolume() * (lfsr & 0b1)) << endl;
 
     return envelopeCounter.getVolume() * (lfsr & 0b1);
 }

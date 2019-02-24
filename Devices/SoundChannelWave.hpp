@@ -10,7 +10,7 @@
 #include "Util/ByteUtil.hpp"
 #include "Devices/IoDevice.hpp"
 #include "Devices/Audio/LengthCounter.hpp"
-#include "Devices/Audio/Timer.hpp"
+#include "Devices/Audio/FrequencyCounter.hpp"
 
 #define NR_30_SOUND_ON_OFF                   0xFF1A
 #define NR_31_SOUND_LENGTH                   0xFF1B
@@ -37,7 +37,7 @@ private:
     int position = 0;
     uint8_t sampleBuffer = 0;
 
-    Timer frequencyTimer;
+    FrequencyCounter frequencyTimer;
     LengthCounter lengthCounter;
 
     void checkForTrigger();
