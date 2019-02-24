@@ -889,29 +889,26 @@ void Cpu::acknowledgeInterrupts() {
         regPC = INTERRUPT_HANDLER_LCDC;
         halted = false;
 
-    } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
-        interruptMasterEnable = 0;
-        push16(regPC);
-        stoppedWaitingForKey = false;
-        regPC = INTERRUPT_HANDLER_JOYPAD;
-        halted = false;
-
     } else if (interruptFlags->acknowledgeTimerInterrupt()) {
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_TIMER;
         halted = false;
 
-    }
+    } else if (interruptFlags->acknowledgeSerialInterrupt()) {
+        interruptMasterEnable = 0;
+        push16(regPC);
+        stoppedWaitingForKey = false;
+        regPC = INTERRUPT_HANDLER_SERIAL;
+        halted = false;
 
-    /*
-    Priority:
-    V-Blank
-    LCDC Status
-    Timer Overflow 
-    Serial Transfer
-    Hi-Lo of P10-P13
-    */
+    } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
+        interruptMasterEnable = 0;
+        push16(regPC);
+        regPC = INTERRUPT_HANDLER_JOYPAD;
+        halted = false;
+
+    }
 }
 
 void Cpu::cycle(int numberOfCycles) {

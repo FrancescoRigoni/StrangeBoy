@@ -18,6 +18,7 @@
 #define IF_BIT_VBLANK       0
 #define IF_BIT_LCDC         1
 #define IF_BIT_TIMER        2
+#define IF_BIT_SERIAL       3
 #define IF_BIT_JOYPAD       4
 
 class InterruptFlags : public IoDevice {
@@ -40,6 +41,9 @@ public:
 
     void interruptTimer();
     bool acknowledgeTimerInterrupt();
+
+    void interruptSerial();
+    bool acknowledgeSerialInterrupt();
 };
 
 #endif

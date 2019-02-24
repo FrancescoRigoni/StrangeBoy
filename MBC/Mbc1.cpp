@@ -18,7 +18,7 @@ bool Mbc1::write8(uint16_t address, uint8_t value) {
             romBankNumber = (romBankNumber & 0b0011111) | ((value & 0b11) << 5);
             if (romBankNumber == 0) romBankNumber = 1;
         } else {
-            ramBankNumber = value & 0b11; 
+            ramBankNumber = value & 0b11;
         }
 
         return true;

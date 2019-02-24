@@ -40,6 +40,7 @@ uint8_t Memory::read8(uint16_t address) {
 
     uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
+
 	return decodedMemory[decodedAddress];
 }
 
@@ -51,10 +52,6 @@ void Memory::write16(uint16_t address, uint16_t value) {
 }
 
 void Memory::write8(uint16_t address, uint8_t value) {
-    if (address == 0xFF01 || address == 0xFF02) {
-        cout << "Serial!" << endl;
-    }
-
     auto ioMapping = ioMap.find(address);
     if (ioMapping != ioMap.end()) {
         ioMap[address]->write8(address, value);
@@ -68,6 +65,11 @@ void Memory::write8(uint16_t address, uint8_t value) {
     uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = value;
+
+
+    // if (address == 0xac04) {
+    //     cout << "Wrote: " << cout16Hex(value) << " into 0xac04" << endl;
+    // }
 }
 
 uint8_t * Memory::getMemoryAreaForAddress(uint32_t *address) {

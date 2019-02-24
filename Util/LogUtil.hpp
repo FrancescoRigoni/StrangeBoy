@@ -29,7 +29,7 @@ using namespace std;
 //if (regPC >= 0x017e && regPC <= 0x020b) cout << expr;
 #ifdef TRACE_CPU_ON
     #define TRACE_CPU(expr) {                          \
-        if (!memory->bootRomEnabled()m) cout << expr;   \
+        if (!memory->bootRomEnabled()) cout << expr;   \
     }
 #else
     #define TRACE_CPU(expr) {}

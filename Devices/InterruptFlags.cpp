@@ -77,3 +77,19 @@ bool InterruptFlags::acknowledgeTimerInterrupt() {
     }
     return false;
 }
+
+void InterruptFlags::interruptSerial() {
+    if (isBitSet(enableMask, IE_BIT_SERIAL)) {
+        setBit(IF_BIT_SERIAL, &flags);
+    }
+}
+
+
+bool InterruptFlags::acknowledgeSerialInterrupt() {
+    if (isBitSet(flags, IF_BIT_SERIAL) && 
+        isBitSet(enableMask, IE_BIT_SERIAL)) {
+        resetBit(IF_BIT_SERIAL, &flags);
+        return true;
+    }
+    return false;
+}

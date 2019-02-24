@@ -14,14 +14,15 @@
 #include "Cpu/Memory.hpp"
 #include "Cpu/PersistentRAM.hpp"
 #include "PPU/PPU.hpp"
-#include "Devices/APU.hpp"
 #include "Cpu/Cpu.hpp"
 
+#include "Devices/APU.hpp"
 #include "Devices/Dma.hpp"
 #include "Devices/LCDRegs.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/DivReg.hpp"
 #include "Devices/Timer.hpp"
+#include "Devices/Serial.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/SoundChannelWave.hpp"
 #include "Devices/SoundChannelNoise.hpp"
@@ -90,7 +91,6 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
         break;
     }
 
-    // Init persistent RAM
     PersistentRAM *persistentRAM = new PersistentRAM(cartridgeInfo->gameTitle);
 
     Memory memory(bootRom, gameRom, memoryBankController, persistentRAM);
@@ -99,7 +99,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     InterruptFlags interruptFlags;
     DivReg divReg;
     Timer timer(&interruptFlags);
-
+    Serial serial(&interruptFlags);
 
     SoundChannelSquareWave soundChannel1(NR_10_SOUND_MODE_SWEEP, 
                                          NR_11_SOUND_MODE_LENGTH_DUTY,
@@ -136,6 +136,8 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     memory.registerIoDevice(TIMA, &timer);
     memory.registerIoDevice(TMA, &timer);
     memory.registerIoDevice(TAC, &timer);
+    memory.registerIoDevice(SERIAL_TX_DATA, &serial);
+    memory.registerIoDevice(SERIAL_IO_CTRL, &serial);
 
     memory.registerIoDevice(NR_10_SOUND_MODE_SWEEP, &soundChannel1);
     memory.registerIoDevice(NR_11_SOUND_MODE_LENGTH_DUTY, &soundChannel1);
@@ -185,6 +187,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             ppu.nextState();
             divReg.increment();
             timer.increment();
+            serial.update();
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 
