@@ -14,6 +14,7 @@
 
 
 #define BYTES_PER_SAMPLE        (sizeof(int16_t) * 2)
+#define SOUND_ON                isBitSet(soundOnOff, 7)
 
 using namespace std;
 using namespace std::chrono;
@@ -40,6 +41,11 @@ APU::APU(SoundChannelSquareWave *soundChannel1,
 void APU::generateOneBuffer() {
     long millisecondsSinceLastBuffer = (TIME_MS - lastBufferTime);
 
+    // if (!SOUND_ON) {
+    //     lastBufferTime = TIME_MS;
+    //     return;
+    // }
+
     // Figure out how many samples to generate
     float sampleIntervalMs = 1.0 / (SAMPLE_FREQUENCY / 1000.0);
     float samplesToGenerate = millisecondsSinceLastBuffer / sampleIntervalMs;
@@ -51,17 +57,16 @@ void APU::generateOneBuffer() {
     audioBuffer->buffer = new uint16_t[samplesInBuffer];
     uint16_t *bufferPointer = audioBuffer->buffer;
 
+    bool soundOn = SOUND_ON;
+
     for (int i = 0; i < samplesToGenerate; i++) {
         float terminal1Output = 0;
         float terminal2Output = 0;
 
-        float squareWave1Sample = soundChannel1->isChannelEnabled() ? soundChannel1->sample() : 0;
-        float squareWave2Sample = soundChannel2->isChannelEnabled() ? soundChannel2->sample() : 0;
-        float waveChannelSample = soundChannel3->isChannelEnabled() ? soundChannel3->sample() : 0;
-        float noiseChannelSample = soundChannel4->isChannelEnabled() ? soundChannel4->sample() : 0;
-
-         // cout << "squareWave1Sample: " << squareWave1Sample << endl;
-         // cout << "waveChannelSample: " << waveChannelSample << endl;
+        float squareWave1Sample = soundOn && soundChannel1->isChannelEnabled() ? soundChannel1->sample() : 0;
+        float squareWave2Sample = soundOn && soundChannel2->isChannelEnabled() ? soundChannel2->sample() : 0;
+        float waveChannelSample = soundOn && soundChannel3->isChannelEnabled() ? soundChannel3->sample() : 0;
+        float noiseChannelSample = soundOn && soundChannel4->isChannelEnabled() ? soundChannel4->sample() : 0;
 
         if (soundChannel1ToTerminal1On()) terminal1Output += squareWave1Sample;
         if (soundChannel1ToTerminal2On()) terminal2Output += squareWave1Sample;
@@ -152,7 +157,7 @@ void APU::write8(uint16_t address, uint8_t value) {
         }
         case NR_52_SOUND_ON_OFF: {
             soundOnOff = value; 
-            if (isBitSet(soundOnOff, 7)) channelControl |= 0x88;
+            //if (isBitSet(soundOnOff, 7)) channelControl |= 0x88;
             break;
         }
     }
