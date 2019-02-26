@@ -8,6 +8,7 @@
 class Mbc1 : public Mbc {
 private:
     bool romMode = true;
+
 public:
     virtual bool write8(uint16_t, uint8_t) override;
 };

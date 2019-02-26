@@ -62,6 +62,10 @@ void Memory::write8(uint16_t address, uint8_t value) {
         return;
     }
 
+    if (address < VIDEO_RAM_START) {
+        cout << "Writing to rom!" << endl;
+    }
+
     uint32_t decodedAddress = address;
 	uint8_t *decodedMemory = getMemoryAreaForAddress(&decodedAddress);
 	decodedMemory[decodedAddress] = value;

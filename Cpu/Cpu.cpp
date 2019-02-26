@@ -907,7 +907,6 @@ void Cpu::acknowledgeInterrupts() {
         push16(regPC);
         regPC = INTERRUPT_HANDLER_JOYPAD;
         halted = false;
-
     }
 }
 

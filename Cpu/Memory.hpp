@@ -40,6 +40,7 @@ using namespace std;
 
 class Memory {
 private:
+    
     Mbc *memoryBankController = 0;
     PersistentRAM *persistentRAM = 0;
 
