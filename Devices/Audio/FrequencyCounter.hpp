@@ -6,13 +6,13 @@
 
 class FrequencyCounter {
 private:
-    int period = 0;
-    int value = 0;
+    float period = 0;
+    float value = 0;
     long outputClockTicks = 0;
 
 public:
-    void setPeriod(int);
-    void updatePeriod(int);
+    void setPeriod(float);
+    void updatePeriod(float);
     bool update();
     long getOutputClockTicks();
 };

@@ -159,6 +159,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
          waveRamAddress <= WAVE_RAM_END; 
          waveRamAddress++) {
         memory.registerIoDevice(waveRamAddress, &soundChannel3);
+        cout << "Register wave at " <<  cout16Hex(waveRamAddress) << endl;
     }
 
     memory.registerIoDevice(NR_41_SOUND_MODE_LENGTH, &soundChannel4);
@@ -184,9 +185,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             int cycles = ppu.run();
             dma.cycle(cycles);
             cpu.cycle(cycles);
-            ppu.nextState();
             divReg.increment();
             serial.update();
+            ppu.nextState();
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
 

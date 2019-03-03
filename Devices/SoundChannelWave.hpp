@@ -19,7 +19,7 @@
 #define NR_34_SOUND_MODE_FREQ_HI             0xFF1E
 
 #define WAVE_RAM_START                       0xFF30
-#define WAVE_RAM_END                         0x003F
+#define WAVE_RAM_END                         0xFF3F
 
 using namespace std;
 
@@ -35,7 +35,6 @@ private:
 
     bool channelEnabled;
     int position = 0;
-    uint8_t sampleBuffer = 0;
 
     FrequencyCounter frequencyTimer;
     LengthCounter lengthCounter;

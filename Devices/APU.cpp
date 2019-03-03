@@ -41,11 +41,6 @@ APU::APU(SoundChannelSquareWave *soundChannel1,
 void APU::generateOneBuffer() {
     long millisecondsSinceLastBuffer = (TIME_MS - lastBufferTime);
 
-    // if (!SOUND_ON) {
-    //     lastBufferTime = TIME_MS;
-    //     return;
-    // }
-
     // Figure out how many samples to generate
     float sampleIntervalMs = 1.0 / (SAMPLE_FREQUENCY / 1000.0);
     float samplesToGenerate = millisecondsSinceLastBuffer / sampleIntervalMs;

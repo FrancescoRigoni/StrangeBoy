@@ -2,7 +2,7 @@
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
 
-#define FREQUENCY ((uint16_t)soundRegFrequencyLow | ((uint16_t)soundRegFrequencyHigh & 0b111) << 8)
+#define FREQUENCY (((uint16_t)soundRegFrequencyLow) | (((uint16_t)soundRegFrequencyHigh) & 0b111) << 8)
 #define FREQUENCY_TO_PERIOD(freq) ((2048-freq)*2)
 #define OUTPUT_LEVEL ((soundRegOutputLevel & 0b1100000) >> 5)
 #define LENGTH_ON ((soundRegFrequencyHigh & 0b1000000) >> 6)
@@ -15,23 +15,25 @@ float SoundChannelWave::sample() {
     lengthCounter.update();
     if (LENGTH_ON && !lengthCounter.isEnabled()) return 0;
 
-    bool updated = frequencyTimer.update();
-    if (updated) {
-        position++;
-        position %= 32;
+    frequencyTimer.update();
 
-        bool highNibble = (position % 2) == 0;
-        if (highNibble) sampleBuffer = highNibbleOf(waveRam[position]);
-        else sampleBuffer = lowNibbleOf(waveRam[position]);
+    uint8_t outputValue;
 
-        int outputLevel = OUTPUT_LEVEL;
-        switch(outputLevel) {
-            case 0: sampleBuffer >>= 4; break;
-            case 2: sampleBuffer >>= 1; break;
-            case 3: sampleBuffer >>= 2; break;
-        }
+    int frequencyTicksMod32 = frequencyTimer.getOutputClockTicks() % 32;
+    int position = frequencyTicksMod32 / 2;
+    int positionInByte = frequencyTicksMod32 % 2;
+
+    if (positionInByte == 0) outputValue = highNibbleOf(waveRam[position]);
+    else outputValue = lowNibbleOf(waveRam[position]);
+
+    int outputLevel = OUTPUT_LEVEL;
+    switch(outputLevel) {
+        case 0: outputValue >>= 4; break;
+        case 2: outputValue >>= 1; break;
+        case 3: outputValue >>= 2; break;
     }
-    return (float)sampleBuffer/16.0;
+
+    return ((float)outputValue)/16.0;
 }
 
 void SoundChannelWave::checkForTrigger() {
@@ -79,7 +81,7 @@ void SoundChannelWave::write8(uint16_t address, uint8_t value) {
 uint8_t SoundChannelWave::read8(uint16_t address) {
     if (address == NR_30_SOUND_ON_OFF) {
         // Only bit 7 can be read
-        return soundRegOnOff;
+        return soundRegOnOff & 0b10000000;
 
     } else if (address == NR_31_SOUND_LENGTH) {
         return soundRegLength;
