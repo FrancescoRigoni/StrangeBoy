@@ -31,18 +31,23 @@ public:
     virtual uint8_t read8(uint16_t);
 
     void interruptVBlank();
+    bool checkVBlankInterrupt();
     bool acknowledgeVBlankInterrupt();
 
     void interruptLCDC();
+    bool checkLCDCInterrupt();
     bool acknowledgeLCDCInterrupt();
 
     void interruptJoypad();
+    bool checkJoypadInterrupt();
     bool acknowledgeJoypadInterrupt();
 
     void interruptTimer();
+    bool checkTimerInterrupt();
     bool acknowledgeTimerInterrupt();
 
     void interruptSerial();
+    bool checkSerialInterrupt();
     bool acknowledgeSerialInterrupt();
 };
 

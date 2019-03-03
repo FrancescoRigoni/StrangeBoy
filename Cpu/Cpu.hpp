@@ -7,6 +7,7 @@
 #include "Cpu/Memory.hpp"
 #include "Util/ByteUtil.hpp"
 #include "Devices/InterruptFlags.hpp"
+#include "Devices/Timer.hpp"
 
 #define PC_INITIAL 0x0000
 
@@ -36,6 +37,7 @@ private:
 
     Memory *memory;
     InterruptFlags *interruptFlags;
+    Timer *timer;
 
     void push8(uint8_t);
     void push16(uint16_t);
@@ -78,12 +80,13 @@ private:
     inline void setRegSP(uint16_t val) { regSP = val; }
 
     void acknowledgeInterrupts();
+    bool checkInterrupts();
 
 public:
     uint16_t regPC = PC_INITIAL;
     bool unimplemented = false;
 
-    Cpu(Memory *, InterruptFlags *);
+    Cpu(Memory *, InterruptFlags *, Timer *);
 
 	void cycle(int);
     void execute();

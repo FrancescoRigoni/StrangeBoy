@@ -31,6 +31,10 @@ bool InterruptFlags::acknowledgeVBlankInterrupt() {
     return false;
 }
 
+bool InterruptFlags::checkVBlankInterrupt() {
+    return (isBitSet(flags, IF_BIT_VBLANK) && isBitSet(enableMask, IE_BIT_VBLANK));
+}
+
 void InterruptFlags::interruptLCDC() {
     if (isBitSet(enableMask, IE_BIT_LCDC)) {
         setBit(IF_BIT_LCDC, &flags);
@@ -46,12 +50,15 @@ bool InterruptFlags::acknowledgeLCDCInterrupt() {
     return false;
 }
 
+bool InterruptFlags::checkLCDCInterrupt() {
+    return (isBitSet(flags, IF_BIT_LCDC) && isBitSet(enableMask, IE_BIT_LCDC));
+}
+
 void InterruptFlags::interruptJoypad() {
     if (isBitSet(enableMask, IE_BIT_JOYPAD)) {
         setBit(IF_BIT_JOYPAD, &flags);
     }
 }
-
 
 bool InterruptFlags::acknowledgeJoypadInterrupt() {
     if (isBitSet(flags, IF_BIT_JOYPAD) && 
@@ -60,6 +67,10 @@ bool InterruptFlags::acknowledgeJoypadInterrupt() {
         return true;
     }
     return false;
+}
+
+bool InterruptFlags::checkJoypadInterrupt() {
+    return (isBitSet(flags, IF_BIT_JOYPAD) && isBitSet(enableMask, IE_BIT_JOYPAD));
 }
 
 void InterruptFlags::interruptTimer() {
@@ -78,12 +89,15 @@ bool InterruptFlags::acknowledgeTimerInterrupt() {
     return false;
 }
 
+bool InterruptFlags::checkTimerInterrupt() {
+    return (isBitSet(flags, IF_BIT_TIMER) && isBitSet(enableMask, IE_BIT_TIMER));
+}
+
 void InterruptFlags::interruptSerial() {
     if (isBitSet(enableMask, IE_BIT_SERIAL)) {
         setBit(IF_BIT_SERIAL, &flags);
     }
 }
-
 
 bool InterruptFlags::acknowledgeSerialInterrupt() {
     if (isBitSet(flags, IF_BIT_SERIAL) && 
@@ -92,4 +106,8 @@ bool InterruptFlags::acknowledgeSerialInterrupt() {
         return true;
     }
     return false;
+}
+
+bool InterruptFlags::checkSerialInterrupt() {
+    return (isBitSet(flags, IF_BIT_SERIAL) && isBitSet(enableMask, IE_BIT_SERIAL));
 }

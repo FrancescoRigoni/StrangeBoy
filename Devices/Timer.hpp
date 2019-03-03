@@ -24,6 +24,7 @@ private:
     long lastIncrement;
 
     InterruptFlags *interruptFlags;
+    float floatValue;
 
     float getFrequencyHz();
 
@@ -32,7 +33,7 @@ public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    void increment();
+    void tick(int cpuCyles);
 };
 
 #endif

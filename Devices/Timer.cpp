@@ -11,6 +11,7 @@ INPUT_CLOCK_SELECT:
 
 #define INPUT_CLOCK_SELECT (control & 0b11)
 #define TIMER_START ((control & 0b100) >> 2)
+#define CPU_FREQUENCY_HZ (4*1024*1024)
 
 Timer::Timer(InterruptFlags *interruptFlags) {
     this->interruptFlags = interruptFlags;
@@ -26,42 +27,35 @@ float Timer::getFrequencyHz() {
     return 0;
 }
 
-void Timer::increment() {
-    if (lastIncrement == 0) {
-        lastIncrement = chrono::duration_cast<chrono::milliseconds> 
-            (chrono::system_clock::now().time_since_epoch()).count();
+void Timer::tick(int cpuCycles) {
+    if (!TIMER_START) {
         return;
     }
 
-    long now = chrono::duration_cast<chrono::milliseconds>
-        (chrono::system_clock::now().time_since_epoch()).count();
-    long msSinceLastIncrement = now - lastIncrement;
-
+    float cpuTimeMilliseconds = ((1.0/CPU_FREQUENCY_HZ)*(float)cpuCycles) * 1000;
     float incrementPerMillisecond = getFrequencyHz() / 1000.0;
-    int increments = incrementPerMillisecond * msSinceLastIncrement;
-    int newCounter = counter + increments;
+    float increments = incrementPerMillisecond * cpuTimeMilliseconds;
+    float newCounter = floatValue + increments;
 
     if (newCounter > 255) {
-        counter = modulo;
+        floatValue = modulo;
         interruptFlags->interruptTimer();
-    } else {
-        counter = newCounter;
-    }
 
-    lastIncrement = chrono::duration_cast<chrono::milliseconds> 
-            (chrono::system_clock::now().time_since_epoch()).count();
+    } else {
+        floatValue = newCounter;
+    }
+    counter = floatValue;
 }
 
 void Timer::write8(uint16_t address, uint8_t value) {
     switch (address) {
         case TIMA: 
-            counter = value; break;
+            counter = value; floatValue = value; break;
 
         case TMA: 
             modulo = value; break;
 
-        case TAC: 
-            control = value; break;
+        case TAC: control = value; break;
     }
 }
 

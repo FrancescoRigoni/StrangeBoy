@@ -20,9 +20,10 @@ using namespace std;
 #define DUMP_CPU_STATUS() {}
 #endif
 
-Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags) {
+Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags, Timer *timer) {
     this->memory = memory;
     this->interruptFlags = interruptFlags;
+    this->timer = timer;
 }
 
 void Cpu::push8(uint8_t val) {
@@ -910,6 +911,14 @@ void Cpu::acknowledgeInterrupts() {
     }
 }
 
+bool Cpu::checkInterrupts() {
+    return interruptFlags->checkVBlankInterrupt() ||
+        interruptFlags->checkLCDCInterrupt() ||
+        interruptFlags->checkTimerInterrupt() ||
+        interruptFlags->checkSerialInterrupt() ||
+        interruptFlags->checkJoypadInterrupt();
+}
+
 void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
 
@@ -919,11 +928,20 @@ void Cpu::cycle(int numberOfCycles) {
             acknowledgeInterrupts();
         } else if (interruptMasterEnable == 1) {
             interruptMasterEnable++;
+        } else if (halted && checkInterrupts()) {
+            halted = false;
         }
 
+        int cpuCyclesForTimerTicks = 4;
+
         if (!halted) {
+            int cyclesBeforeExecute = cyclesToSpend;
             execute();
+            int cyclesAfterExecute = cyclesToSpend;
+            cpuCyclesForTimerTicks = cyclesBeforeExecute-cyclesAfterExecute;
         }
+
+        timer->tick(cpuCyclesForTimerTicks);
 
     } while (cyclesToSpend > 0 && 
              !halted &&

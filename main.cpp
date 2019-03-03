@@ -118,7 +118,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
     APU apu(&soundChannel1, &soundChannel2, &soundChannel3, &soundChannel4, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
-    Cpu cpu(&memory, &interruptFlags);
+    Cpu cpu(&memory, &interruptFlags, &timer);
 
     memory.registerIoDevice(P1, joypad);
     memory.registerIoDevice(DMA, &dma);
@@ -186,7 +186,6 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             cpu.cycle(cycles);
             ppu.nextState();
             divReg.increment();
-            timer.increment();
             serial.update();
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
