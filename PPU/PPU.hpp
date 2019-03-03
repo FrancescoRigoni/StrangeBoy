@@ -23,6 +23,11 @@ private:
     void decodePaletteByte(uint16_t, uint8_t *);
     uint8_t decodePixelFromTile(uint16_t, int, int, int, int, uint8_t *);
 
+    void triggerLCDCLYLYCCoincidenceInterrupt(uint8_t, int);
+    void triggerLCDCModeVBlankInterrupt(uint8_t);
+    void triggerLCDCModeHBlankInterrupt(uint8_t);
+    void triggerLCDCModeOAMSearchInterrupt(uint8_t);
+
     int currentWindowLine;
 
 public:

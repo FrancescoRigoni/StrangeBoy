@@ -62,60 +62,78 @@ int PPU::run() {
 
 void PPU::nextState() {
     uint8_t stat = lcdRegs->read8(STAT);
+    uint8_t line = lcdRegs->read8(LY);
 
     if (lcdRegs->inOAMSearch()) {
         lcdRegs->stateDrawLine();
-        // LCDC interrupt is not generated for this state.
 
     } else if (lcdRegs->inDrawLine()) {
         // Line was drawn, enter HBlank.
         lcdRegs->stateHBlank();
+        triggerLCDCModeHBlankInterrupt(stat);
 
-        // Generate LCDC interrupt if the selection says so.
-        if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_HBLANK_BIT)) {
-            interruptFlags->interruptLCDC();
-        }
-
-    } else if (lcdRegs->inHBlank() || 
-               lcdRegs->inVBlank()) {
-        // Increment line number we are about to draw, reset to line zero if it overflows.
-        uint8_t line = lcdRegs->read8(LY);
+    } else if (lcdRegs->inHBlank()) {
+        // Increment line number.
         line = (line+1)%SCREEN_HEIGHT_INCLUDING_VBLANK;
-        lcdRegs->setCurrentLine(line);
+        // Generate LY, LYC coincidence interrupt.
+        triggerLCDCLYLYCCoincidenceInterrupt(stat, line);
 
-        // Set the ly, lyc coincidence bit if we are about to draw the lyc line.
-        uint8_t lyc = lcdRegs->read8(LYC);
-        if (line == lyc) {
-            setBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
-            // Generate LCDC interrupt if the selection says so.
-            if (isBitSet(stat, STAT_INTERRUPT_SELECTION_LYC_LY_COINCIDENCE_BIT)) {
-                interruptFlags->interruptLCDC();
-            }
-        }
-        else resetBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
-
-        if (line < SCREEN_HEIGHT_PX) {
-            // We are drawing inside the visible screen.
-            lcdRegs->stateOAMSearch();
-
-            // Generate LCDC interrupt if the selection says so.
-            if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_OAM_SEARCH_BIT)) {
-                interruptFlags->interruptLCDC();
-            }
-
-        } else if (line == SCREEN_HEIGHT_PX) {
-            // We entered VBlank.
+        if (line == SCREEN_HEIGHT_PX) {
+            // Go to VBlank
             lcdRegs->stateVBlank();
             interruptFlags->interruptVBlank();
+            triggerLCDCModeVBlankInterrupt(stat);
 
-            // Reset window draw line
             currentWindowLine = 0;
 
-            // Generate LCDC interrupt if the selection says so.
-            if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_VBLANK_BIT)) {
-                interruptFlags->interruptLCDC();
-            }
-        } // else keep incrementing line until it wraps back to zero
+        } else {
+            // Go back to OAM search state.
+            lcdRegs->stateOAMSearch();
+            triggerLCDCModeOAMSearchInterrupt(stat);
+        }
+
+    } else if (lcdRegs->inVBlank()) {
+        // Increment line number.
+        line = (line+1)%SCREEN_HEIGHT_INCLUDING_VBLANK;
+        // Generate LY, LYC coincidence interrupt.
+        triggerLCDCLYLYCCoincidenceInterrupt(stat, line);
+
+        if (line == 0) {
+            lcdRegs->stateOAMSearch();
+            triggerLCDCModeOAMSearchInterrupt(stat);
+        }
+    }
+
+    lcdRegs->setCurrentLine(line);
+}
+
+void PPU::triggerLCDCLYLYCCoincidenceInterrupt(uint8_t stat, int line) {
+    // Set the ly, lyc coincidence bit if the line matches LYC
+    uint8_t lyc = lcdRegs->read8(LYC);
+    if (line == lyc) {
+        setBit(STAT_LYC_LY_COINCIDENCE_BIT, &stat);
+        // Generate LCDC interrupt if the selection says so.
+        if (isBitSet(stat, STAT_INTERRUPT_SELECTION_LYC_LY_COINCIDENCE_BIT)) {
+            interruptFlags->interruptLCDC();
+        }
+    }
+}
+
+void PPU::triggerLCDCModeVBlankInterrupt(uint8_t stat) {
+    if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_VBLANK_BIT)) {
+        interruptFlags->interruptLCDC();
+    }
+}
+
+void PPU::triggerLCDCModeHBlankInterrupt(uint8_t stat) {
+    if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_HBLANK_BIT)) {
+        interruptFlags->interruptLCDC();
+    }
+}
+
+void PPU::triggerLCDCModeOAMSearchInterrupt(uint8_t stat) {
+    if (isBitSet(stat, STAT_INTERRUPT_SELECTION_MODE_OAM_SEARCH_BIT)) {
+        interruptFlags->interruptLCDC();
     }
 }
 
