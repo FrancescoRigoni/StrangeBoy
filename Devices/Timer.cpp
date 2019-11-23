@@ -32,7 +32,8 @@ void Timer::tick(int cpuCycles) {
         return;
     }
 
-    float cpuTimeMilliseconds = ((1.0/CPU_FREQUENCY_HZ)*(float)cpuCycles) * 1000;
+    float cpuPeriodMilliseconds = 1000.0/(float)CPU_FREQUENCY_HZ;
+    float cpuTimeMilliseconds = cpuPeriodMilliseconds * ((float)cpuCycles);
     float incrementPerMillisecond = getFrequencyHz() / 1000.0;
     float increments = incrementPerMillisecond * cpuTimeMilliseconds;
     float newCounter = floatValue + increments;
@@ -44,24 +45,28 @@ void Timer::tick(int cpuCycles) {
     } else {
         floatValue = newCounter;
     }
-    counter = floatValue;
+
 }
 
 void Timer::write8(uint16_t address, uint8_t value) {
     switch (address) {
-        case TIMA: 
-            counter = value; floatValue = value; break;
+        case TIMA:
+            floatValue = value;
+            break;
 
-        case TMA: 
-            modulo = value; break;
+        case TMA:
+            modulo = value; 
+            break;
 
-        case TAC: control = value; break;
+        case TAC:
+            control = value;
+            break;
     }
 }
 
 uint8_t Timer::read8(uint16_t address) {
     switch (address) {
-        case TIMA: return counter;
+        case TIMA: return (uint8_t) floatValue;
         case TMA: return modulo;
         case TAC: return control;
     }

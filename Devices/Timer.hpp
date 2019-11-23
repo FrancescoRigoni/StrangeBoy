@@ -18,10 +18,8 @@ using namespace std;
 
 class Timer : public IoDevice {
 private:
-    uint8_t counter = 0;
     uint8_t modulo = 0;
     uint8_t control = 0;
-    long lastIncrement;
 
     InterruptFlags *interruptFlags;
     float floatValue;

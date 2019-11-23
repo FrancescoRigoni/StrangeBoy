@@ -6,6 +6,7 @@
 #include <iomanip>
 using namespace std;
 
+#define coutFloat(value, precision) std::fixed << std::setprecision(precision) << value
 #define cout8Signed(value) dec << +(int8_t)value
 #define cout8Hex(value) hex << "$" << setfill('0') << setw(2) << +value
 #define cout16Hex(value) hex << "$" << setfill('0') << setw(4) << value
@@ -20,7 +21,7 @@ using namespace std;
 //#define TRACE_DMA_ON
 //#define TRACE_SCREEN_ON
 //#define TRACE_CART_INFO_ON
-#define TRACE_MBC_ON
+//#define TRACE_MBC_ON
 //#define TRACE_SOUND_ON
 
 #define OPCODE_PFX     "    : "

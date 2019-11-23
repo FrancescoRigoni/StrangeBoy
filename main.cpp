@@ -159,7 +159,6 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
          waveRamAddress <= WAVE_RAM_END; 
          waveRamAddress++) {
         memory.registerIoDevice(waveRamAddress, &soundChannel3);
-        cout << "Register wave at " <<  cout16Hex(waveRamAddress) << endl;
     }
 
     memory.registerIoDevice(NR_41_SOUND_MODE_LENGTH, &soundChannel4);
@@ -188,10 +187,9 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
             divReg.increment();
             serial.update();
             ppu.nextState();
+            apu.generateOneBuffer();
 
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
-
-        apu.generateOneBuffer();
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
         int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;

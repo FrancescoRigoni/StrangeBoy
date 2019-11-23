@@ -61,6 +61,9 @@ uint16_t Cpu::imm16() {
 
 #define USE_CYCLES(n) {                    \
     cyclesToSpend -= n;                    \
+    if (cyclesToSpend < 0) {               \
+        cyclesToSpend = 0;                 \
+    }                                      \
 }
 
 #define OPCODE_NOP() {                     \
@@ -921,7 +924,7 @@ bool Cpu::checkInterrupts() {
 
 void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
-
+    
     do {
         // Check for interrupts
         if (interruptMasterEnable == 2) {
@@ -932,16 +935,14 @@ void Cpu::cycle(int numberOfCycles) {
             halted = false;
         }
 
-        int cpuCyclesForTimerTicks = 4;
-
         if (!halted) {
             int cyclesBeforeExecute = cyclesToSpend;
             execute();
             int cyclesAfterExecute = cyclesToSpend;
-            cpuCyclesForTimerTicks = cyclesBeforeExecute-cyclesAfterExecute;
+            timer->tick(cyclesBeforeExecute-cyclesAfterExecute);
+        } else {
+            timer->tick(cyclesToSpend);
         }
-
-        timer->tick(cpuCyclesForTimerTicks);
 
     } while (cyclesToSpend > 0 && 
              !halted &&
