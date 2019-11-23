@@ -33,8 +33,7 @@ public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    void cycle(int cycles);
-    bool isTransferInProgress();
+    void tick(int cycles);
 };
 
 #endif

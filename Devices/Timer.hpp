@@ -3,7 +3,6 @@
 #define _TIMER_H_
 
 #include <cstdint>
-#include <chrono>
 #include "Cpu/Memory.hpp"
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"

@@ -15,6 +15,8 @@ bool Mbc1::write8(uint16_t address, uint8_t value) {
         romBankNumber = romBankNumber & 0b1100000;
         romBankNumber |= lowBitsOfRomBankNumber;
 
+        //if (romBankNumber == 0x1b) romBankNumber = 0x0c;
+
         TRACE_MBC("Writing romBankNumber low " << cout8Hex(romBankNumber) << endl);
         return true;
 

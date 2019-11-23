@@ -118,7 +118,7 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
 
     APU apu(&soundChannel1, &soundChannel2, &soundChannel3, &soundChannel4, sound);
     PPU ppu(&memory, &lcdRegs, &interruptFlags, screen);
-    Cpu cpu(&memory, &interruptFlags, &timer);
+    Cpu cpu(&memory, &interruptFlags, &timer, &dma, &divReg);
 
     memory.registerIoDevice(P1, joypad);
     memory.registerIoDevice(DMA, &dma);
@@ -177,14 +177,14 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     this_thread::sleep_for(chrono::milliseconds(1000));
 
     do {
+        apu.generateOneBuffer();
+        
         // Draw a frame
         unsigned long timeAtStartOfFrame = getTimeMilliseconds();
 
         do {
             int cycles = ppu.run();
-            dma.cycle(cycles);
             cpu.cycle(cycles);
-            divReg.increment();
             serial.update();
             ppu.nextState();
             apu.generateOneBuffer();

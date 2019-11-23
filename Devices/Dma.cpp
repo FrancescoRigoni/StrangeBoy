@@ -18,7 +18,7 @@ uint8_t Dma::read8(uint16_t address) {
     return 0;
 }
 
-void Dma::cycle(int cycles) {
+void Dma::tick(int cycles) {
     if (cpuCyclesLeftForTransfer <= 0) return;
 
     for (int availableCycles = cycles; availableCycles > 0; availableCycles--) {
@@ -32,8 +32,4 @@ void Dma::cycle(int cycles) {
             break;
         }
     }
-}
-
-bool Dma::isTransferInProgress() {
-    return cpuCyclesLeftForTransfer > 0;
 }

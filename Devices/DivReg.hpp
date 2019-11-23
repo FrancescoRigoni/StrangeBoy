@@ -3,7 +3,6 @@
 #define __DIVREG_H__
 
 #include <cstdint>
-#include <chrono>
 #include "Cpu/Memory.hpp"
 #include "Util/LogUtil.hpp"
 #include "Util/ByteUtil.hpp"
@@ -15,14 +14,13 @@ using namespace std;
 
 class DivReg : public IoDevice {
 private:
-    long lastIncrement = 0;
-    uint8_t value = 0;
+    float value = 0;
 
 public:
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 
-    void increment();
+    void tick(int cpuCycles);
 };
 
 #endif

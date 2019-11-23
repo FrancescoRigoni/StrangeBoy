@@ -81,7 +81,9 @@ uint8_t * Memory::getMemoryAreaForAddress(uint32_t *address) {
         return bootRom;
 
     } else if (*address >= ROM_BANK_SWTC_START && *address < (ROM_BANK_SWTC_START + ROM_BANK_SWTC_SIZE)) {
+       // cout << "Accessing bank " << cout8Hex(memoryBankController->getRomBankNumber()) << endl;
         *address = (*address-ROM_BANK_SWTC_START) + (ROM_BANK_SIZE * memoryBankController->getRomBankNumber());
+       // cout << "absolute address: " << cout16Hex(*address) << endl;
         return gameRom;
 
     } else if (*address < VIDEO_RAM_START) {
@@ -92,7 +94,7 @@ uint8_t * Memory::getMemoryAreaForAddress(uint32_t *address) {
         return persistentRAM->getRamBank(memoryBankController->getRamBankNumber());
 
     } else if (*address >= INTERNAL_RAM_ECHO_START && *address < OAM_RAM_START) {
-        *address -= INTERNAL_RAM_SIZE;
+        *address = INTERNAL_RAM_START + (*address-INTERNAL_RAM_ECHO_START);
         return memory;
 
     } else {

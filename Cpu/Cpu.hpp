@@ -8,6 +8,8 @@
 #include "Util/ByteUtil.hpp"
 #include "Devices/InterruptFlags.hpp"
 #include "Devices/Timer.hpp"
+#include "Devices/Dma.hpp"
+#include "Devices/DivReg.hpp"
 
 #define PC_INITIAL 0x0000
 
@@ -38,6 +40,8 @@ private:
     Memory *memory;
     InterruptFlags *interruptFlags;
     Timer *timer;
+    Dma *dma;
+    DivReg *divReg;
 
     void push8(uint8_t);
     void push16(uint16_t);
@@ -86,7 +90,7 @@ public:
     uint16_t regPC = PC_INITIAL;
     bool unimplemented = false;
 
-    Cpu(Memory *, InterruptFlags *, Timer *);
+    Cpu(Memory *, InterruptFlags *, Timer *, Dma *, DivReg *);
 
 	void cycle(int);
     void execute();

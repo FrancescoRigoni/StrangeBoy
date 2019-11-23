@@ -1,6 +1,7 @@
 #include "Devices/DivReg.hpp"
 
-#define DIV_REG_INCREMENTS_PER_MILLISECOND (16384.0 / 1000.0)
+#define DIV_REG_FREQUENCY_HZ 16384.0
+#define CPU_FREQUENCY_HZ (4*1024*1024)
 
 void DivReg::write8(uint16_t address, uint8_t value) {
     value = 0;
@@ -10,20 +11,10 @@ uint8_t DivReg::read8(uint16_t address) {
     return value;
 }
 
-void DivReg::increment() {
-    if (lastIncrement == 0) {
-        lastIncrement = chrono::duration_cast<chrono::milliseconds> 
-            (chrono::system_clock::now().time_since_epoch()).count();
-        return;
-    }
-
-    long now = chrono::duration_cast<chrono::milliseconds>
-        (chrono::system_clock::now().time_since_epoch()).count();
-    long msSinceLastIncrement = now - lastIncrement;
-    int increments = DIV_REG_INCREMENTS_PER_MILLISECOND * msSinceLastIncrement;
-
-    value += increments;
-
-    lastIncrement = chrono::duration_cast<chrono::milliseconds> 
-            (chrono::system_clock::now().time_since_epoch()).count();
+void DivReg::tick(int cpuCycles) {
+    float cpuTimeMilliseconds = ((1.0/CPU_FREQUENCY_HZ)*(float)cpuCycles) * 1000;
+    float incrementPerMillisecond = DIV_REG_FREQUENCY_HZ / 1000.0;
+    float increments = incrementPerMillisecond * cpuTimeMilliseconds;
+    value = value + increments;
+    if (value > 255) value = 0;
 }

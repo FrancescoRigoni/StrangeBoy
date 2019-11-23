@@ -20,10 +20,12 @@ using namespace std;
 #define DUMP_CPU_STATUS() {}
 #endif
 
-Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags, Timer *timer) {
+Cpu::Cpu(Memory *memory, InterruptFlags *interruptFlags, Timer *timer, Dma *dma, DivReg *divReg) {
     this->memory = memory;
     this->interruptFlags = interruptFlags;
     this->timer = timer;
+    this->dma = dma;
+    this->divReg = divReg;
 }
 
 void Cpu::push8(uint8_t val) {
@@ -662,7 +664,7 @@ uint16_t Cpu::imm16() {
 }
 
 #define OPCODE_RET_COND(COND, CONDSTR) {                                              \
-    TRACE_CPU(OPCODE_PFX << "RET " << #CONDSTR);                                      \
+    if (COND) TRACE_CPU(OPCODE_PFX << "RET " << #CONDSTR);                                      \
     bool eval = COND;                                                                 \
     if (eval) regPC = pop16();                                                        \
     USE_CYCLES(eval ? 20 : 8);                                                        \
@@ -838,7 +840,7 @@ uint16_t Cpu::imm16() {
 
 #define OPCODE_CALL_COND(cond, str) {                                                 \
     uint16_t dest = imm16();                                                          \
-    TRACE_CPU(OPCODE_PFX << "CALL " << #str << "," << cout16Hex(dest));               \
+    if (cond) TRACE_CPU(OPCODE_PFX << "CALL " << #str << "," << cout16Hex(dest));               \
     if (cond) {                                                                       \
         push16(regPC);                                                                \
         regPC = dest;                                                                 \
@@ -882,24 +884,28 @@ uint16_t Cpu::imm16() {
 
 void Cpu::acknowledgeInterrupts() {
     if (interruptFlags->acknowledgeVBlankInterrupt()) {
+        //cout << "acknowledgeVBlankInterrupt" << endl;
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_VBLANK;
         halted = false;
 
     } else if (interruptFlags->acknowledgeLCDCInterrupt()) {
+        //cout << "acknowledgeLCDCInterrupt" << endl;
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_LCDC;
         halted = false;
 
     } else if (interruptFlags->acknowledgeTimerInterrupt()) {
+        //cout << "acknowledgeTimerInterrupt" << endl;
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_TIMER;
         halted = false;
 
     } else if (interruptFlags->acknowledgeSerialInterrupt()) {
+        //cout << "acknowledgeSerialInterrupt" << endl;
         interruptMasterEnable = 0;
         push16(regPC);
         stoppedWaitingForKey = false;
@@ -907,6 +913,7 @@ void Cpu::acknowledgeInterrupts() {
         halted = false;
 
     } else if (interruptFlags->acknowledgeJoypadInterrupt()) {
+        //cout << "acknowledgeJoypadInterrupt" << endl;
         interruptMasterEnable = 0;
         push16(regPC);
         regPC = INTERRUPT_HANDLER_JOYPAD;
@@ -922,10 +929,14 @@ bool Cpu::checkInterrupts() {
         interruptFlags->checkJoypadInterrupt();
 }
 
+bool joypad = false;
+
 void Cpu::cycle(int numberOfCycles) {
     cyclesToSpend = numberOfCycles;
-    
+
     do {
+        if (memory->read8(0xFF00) != 0xff) joypad = true;
+
         // Check for interrupts
         if (interruptMasterEnable == 2) {
             acknowledgeInterrupts();
@@ -936,12 +947,21 @@ void Cpu::cycle(int numberOfCycles) {
         }
 
         if (!halted) {
+            // Mark how many cycles we can spend
             int cyclesBeforeExecute = cyclesToSpend;
+            // Spend them
             execute();
-            int cyclesAfterExecute = cyclesToSpend;
-            timer->tick(cyclesBeforeExecute-cyclesAfterExecute);
+            // Calculate how many cycles the devices should tick away
+            int cpuCyclesForDevices = cyclesBeforeExecute - cyclesToSpend;
+            timer->tick(cpuCyclesForDevices);
+            dma->tick(cpuCyclesForDevices);
+            divReg->tick(cpuCyclesForDevices);
+
         } else {
+            // Otherwise keep ticking the devices while not ticking the cpu
             timer->tick(cyclesToSpend);
+            dma->tick(cyclesToSpend);
+            divReg->tick(cyclesToSpend);
         }
 
     } while (cyclesToSpend > 0 && 
@@ -1439,7 +1459,7 @@ void Cpu::execute() {
         case 0xD9: {
             TRACE_CPU(OPCODE_PFX << "RETI");
             regPC = pop16();
-            interruptMasterEnable = true;
+            interruptMasterEnable = 1;
             USE_CYCLES(16);
             break;
         }
