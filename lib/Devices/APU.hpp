@@ -2,8 +2,6 @@
 #ifndef _APU_H_
 #define _APU_H_
 
-#include <chrono>
-
 #include "UI/Sound.hpp"
 #include "Devices/SoundChannelSquareWave.hpp"
 #include "Devices/SoundChannelWave.hpp"
@@ -16,8 +14,6 @@
 
 class APU : public IoDevice {
 private:
-    long lastBufferTime;
-
     uint8_t channelControl;
     uint8_t outputSelection;
     uint8_t soundOnOff;
@@ -52,7 +48,7 @@ public:
         SoundChannelNoise *, 
         Sound *);
 
-    void generateOneBuffer();
+    void generateOneBuffer(int cpuCycles);
     virtual void write8(uint16_t, uint8_t);
     virtual uint8_t read8(uint16_t);
 };

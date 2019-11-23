@@ -177,19 +177,19 @@ void runGameBoy(const char *romPath, Screen *screen, Sound *sound, Joypad *joypa
     this_thread::sleep_for(chrono::milliseconds(1000));
 
     do {
-        apu.generateOneBuffer();
-        
         // Draw a frame
         unsigned long timeAtStartOfFrame = getTimeMilliseconds();
+        int totalCycles = 0;
 
         do {
             int cycles = ppu.run();
+            totalCycles += cycles;
             cpu.cycle(cycles);
             serial.update();
             ppu.nextState();
-            apu.generateOneBuffer();
-
         } while (!(lcdRegs.read8(LY) == 0 && lcdRegs.inOAMSearch()));
+
+        apu.generateOneBuffer(totalCycles);
 
         unsigned long msSpentProcessingFrame = getTimeMilliseconds() - timeAtStartOfFrame;
         int msStillToWaitForNextFrame = msRefreshPeriod - msSpentProcessingFrame;

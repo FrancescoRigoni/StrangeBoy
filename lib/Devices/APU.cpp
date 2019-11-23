@@ -12,16 +12,11 @@
 #define NR_52_2_ON_OFF_BIT      1
 #define NR_52_1_ON_OFF_BIT      0
 
-
+#define CPU_FREQUENCY_HZ        (4*1024*1024)
 #define BYTES_PER_SAMPLE        (sizeof(int16_t) * 2)
 #define SOUND_ON                isBitSet(soundOnOff, 7)
 
 using namespace std;
-using namespace std::chrono;
-
-#define TIME_MS                                                         \
-    chrono::duration_cast<chrono::milliseconds>                         \
-        (chrono::system_clock::now().time_since_epoch()).count()
 
 APU::APU(SoundChannelSquareWave *soundChannel1, 
          SoundChannelSquareWave *soundChannel2, 
@@ -34,16 +29,15 @@ APU::APU(SoundChannelSquareWave *soundChannel1,
     this->soundChannel2 = soundChannel2;
     this->soundChannel3 = soundChannel3;
     this->soundChannel4 = soundChannel4;
-
-    lastBufferTime = TIME_MS;
 }
 
-void APU::generateOneBuffer() {
-    long millisecondsSinceLastBuffer = (TIME_MS - lastBufferTime);
+void APU::generateOneBuffer(int cpuCycles) {
+    float cpuPeriodMilliseconds = 1000.0/(float)CPU_FREQUENCY_HZ;
+    float cpuTimeMilliseconds = cpuPeriodMilliseconds * ((float)cpuCycles);
 
     // Figure out how many samples to generate
     float sampleIntervalMs = 1.0 / (SAMPLE_FREQUENCY / 1000.0);
-    float samplesToGenerate = millisecondsSinceLastBuffer / sampleIntervalMs;
+    float samplesToGenerate = cpuTimeMilliseconds / sampleIntervalMs;
     int samplesInBuffer = samplesToGenerate * 2;
 
     struct AudioBuffer *audioBuffer;
@@ -78,8 +72,6 @@ void APU::generateOneBuffer() {
         *bufferPointer++ = leftOutput;
         *bufferPointer++ = rightOutput;
     }
-
-    lastBufferTime = TIME_MS;
     
     sound->pushBuffer(audioBuffer);
 

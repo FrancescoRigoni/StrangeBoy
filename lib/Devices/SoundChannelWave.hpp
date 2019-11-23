@@ -3,7 +3,6 @@
 #define __SOUNDCHANNEL_WAVE_H__
 
 #include <cstdint>
-#include <chrono>
 
 #include "Cpu/Memory.hpp"
 #include "Util/LogUtil.hpp"
