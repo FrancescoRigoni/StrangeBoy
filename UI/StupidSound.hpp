@@ -1,6 +1,6 @@
 
-#ifndef _SOUND_HPP_
-#define _SOUND_HPP_
+#ifndef _STUPIDSOUND_HPP_
+#define _STUPIDSOUND_HPP_
 
 #include <cstdint>
 #include <SDL2/SDL.h>
@@ -8,20 +8,14 @@
 #include <mutex>
 #include <queue>
 #include <condition_variable>
+#include "UI/Sound.hpp"
 
 using namespace std;
 
-struct AudioBuffer {
-    uint16_t size;
-    uint16_t *buffer;
-};
-
-class Sound {
+class StupidSound : public Sound {
 private:
     mutex bufferMutex;
     queue<struct AudioBuffer *>channel1BuffersQueue;
-
-    //uint16_t freq;
 
 public:
     void init();
@@ -29,9 +23,6 @@ public:
 
     void pushBuffer(struct AudioBuffer *);
     struct AudioBuffer *popBuffer();
-
-    // void pushFreq(int freq);
-    // int popFreq();
 };
 
 #endif

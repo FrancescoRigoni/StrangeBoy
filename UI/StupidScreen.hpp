@@ -1,6 +1,6 @@
 
-#ifndef __SCREEN_H__
-#define __SCREEN_H__
+#ifndef __STUPIDSCREEN_H__
+#define __STUPIDSCREEN_H__
 
 #include <cstdint>
 #include <SDL2/SDL.h>
@@ -8,10 +8,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <UI/Screen.hpp>
 
 using namespace std;
 
-class Screen {
+class StupidScreen : public Screen {
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;

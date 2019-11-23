@@ -11,9 +11,9 @@ struct AudioBuffer {
 
 class Sound {
 public:
-    virtual void init();
-    virtual void run();
-    virtual void pushBuffer(struct AudioBuffer *);
+    virtual void init() = 0;
+    virtual void run() = 0;
+    virtual void pushBuffer(struct AudioBuffer *) = 0;
 };
 
 #endif

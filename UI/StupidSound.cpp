@@ -1,5 +1,5 @@
 
-#include "UI/Sound.hpp"
+#include "UI/StupidSound.hpp"
 #include <iostream>
 
 using namespace std;
@@ -9,7 +9,7 @@ using namespace std;
 #define SAMPLE_COUNT            800
 #define BYTES_PER_BUFFER        (SAMPLE_COUNT * BYTES_PER_SAMPLE)
 
-void Sound::init() {
+void StupidSound::init() {
 
     SDL_AudioSpec AudioSettings = {0};
 
@@ -29,7 +29,7 @@ void Sound::init() {
 
 #define INPUT_MASTER_CLOCK_HZ   4194304
 
-void Sound::run() {
+void StupidSound::run() {
     // int timeSinceLastStep = 8;
 
     // // A timer generates an output clock every N input clocks, where N is the timer's period.
@@ -130,12 +130,12 @@ void Sound::run() {
 //     return freq;
 // }
 
-void Sound::pushBuffer(struct AudioBuffer *buffer) {
+void StupidSound::pushBuffer(struct AudioBuffer *buffer) {
     unique_lock<mutex> lock(bufferMutex);
     channel1BuffersQueue.push(buffer);
 }
 
-struct AudioBuffer *Sound::popBuffer() {
+struct AudioBuffer *StupidSound::popBuffer() {
     unique_lock<mutex> lock(bufferMutex);
 
     if (channel1BuffersQueue.size() == 0) {

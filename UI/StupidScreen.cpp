@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "UI/Screen.hpp"
+#include "UI/StupidScreen.hpp"
 #include "Util/LogUtil.hpp"
 
 #define SCREEN_HEIGHT_PX                            144
@@ -14,7 +14,7 @@
 
 #define DRAW_TILES_GRID false
 
-void Screen::init() {
+void StupidScreen::init() {
     window = SDL_CreateWindow
     (
         "StrangeBoy", 
@@ -33,16 +33,16 @@ void Screen::init() {
     SDL_RenderPresent(renderer);
 }
 
-void Screen::quit() {
+void StupidScreen::quit() {
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
 
-void Screen::run() {
+void StupidScreen::run() {
     drawNextLine();
 }
 
-void Screen::resetToFirstLine() {
+void StupidScreen::resetToFirstLine() {
     unique_lock<mutex> lock(linesMutex);
     currentScanLine = 0;
     while (!linesQueue.empty())
@@ -53,7 +53,7 @@ void Screen::resetToFirstLine() {
     }
 }
 
-void Screen::drawNextLine() {
+void StupidScreen::drawNextLine() {
     uint8_t *pixels = popLine();
     if (pixels == 0) return;
 
@@ -94,7 +94,7 @@ void Screen::drawNextLine() {
     delete[] pixels;
 }
 
-void Screen::pushLine(uint8_t *pixels) {
+void StupidScreen::pushLine(uint8_t *pixels) {
     unique_lock<mutex> lock(linesMutex);
 
     if (linesQueue.size() >= TOO_MANY_LINES_QUEUED) {
@@ -105,7 +105,7 @@ void Screen::pushLine(uint8_t *pixels) {
     zeroLinesCondition.notify_one();
 }
 
-uint8_t *Screen::popLine() {
+uint8_t *StupidScreen::popLine() {
     unique_lock<mutex> lock(linesMutex);
 
     if (linesQueue.size() == 0) {

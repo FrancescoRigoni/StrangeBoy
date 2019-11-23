@@ -1,7 +1,7 @@
 
 #include "UI/UI.hpp"
 
-Screen *UI::getScreen() {
+StupidScreen *UI::getScreen() {
     return &screen;
 }
 
@@ -9,7 +9,7 @@ Joypad *UI::getJoypad() {
     return &joypad;
 }
 
-Sound *UI::getSound() {
+StupidSound *UI::getSound() {
     return &sound;
 }
 

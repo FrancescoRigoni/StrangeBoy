@@ -3,21 +3,21 @@
 #define _UI_HPP_
 
 #include <SDL2/SDL.h>
-#include "UI/Screen.hpp"
-#include "UI/Sound.hpp"
+#include "UI/StupidScreen.hpp"
+#include "UI/StupidSound.hpp"
 #include "Devices/Joypad.hpp"
 
 class UI {
 private:
-    Screen screen;
-    Sound sound;
+    StupidScreen screen;
+    StupidSound sound;
     Joypad joypad;
 
     bool pollEvent();
 
 public:
-    Screen *getScreen();
-    Sound *getSound();
+    StupidScreen *getScreen();
+    StupidSound *getSound();
     Joypad *getJoypad();
 
     void run();
